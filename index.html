@@ -1,0 +1,1612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Harbor &amp; Haul — Mobile Play Store Edition (v17)</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(180deg, #e0f2fe 0%, #bae6fd 38%, #f0f9ff 100%);
+      color: #0f172a;
+      min-height: 100vh;
+      padding-bottom: 88px;
+    }
+    @keyframes bob {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-4px); }
+    }
+    @keyframes waveShift {
+      0%, 100% { transform: translateX(0px); }
+      50% { transform: translateX(-14px); }
+    }
+    @keyframes floatUp {
+      0% { opacity: 1; transform: translate(-50%, 0px) scale(0.95); }
+      100% { opacity: 0; transform: translate(-50%, -44px) scale(1.08); }
+    }
+    .bobbing { animation: bob 2.6s ease-in-out infinite; }
+    .wave-anim { animation: waveShift 4.2s ease-in-out infinite; }
+    .float-popup {
+      position: fixed;
+      z-index: 60;
+      pointer-events: none;
+      animation: floatUp 0.95s ease-out forwards;
+    }
+    .water-tile {
+      background: linear-gradient(160deg, #0284c7 0%, #0369a1 100%);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.28), 0 4px 12px rgba(2,132,199,0.22);
+    }
+    .water-tile-ready {
+      background: linear-gradient(160deg, #10b981 0%, #059669 100%);
+      box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.55), 0 8px 18px rgba(5, 150, 105, 0.3);
+    }
+  </style>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0284c7" />
+</head>
+<body class="antialiased selection:bg-sky-300 selection:text-slate-900">
+
+  <div class="max-w-3xl mx-auto px-3 sm:px-5 py-3.5 sm:py-5">
+    <!-- Compact Sunlit Coastal Header -->
+    <header class="bg-white/95 backdrop-blur-md border border-sky-200 rounded-2xl p-3 sm:p-4 shadow-md mb-3.5">
+      <div class="flex items-center justify-between gap-2 mb-2.5">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="text-xl sm:text-2xl" aria-hidden="true">⚓</span>
+          <div class="truncate">
+            <div class="flex items-center gap-1.5">
+              <h1 class="text-lg sm:text-xl font-extrabold tracking-tight text-slate-900 truncate">Harbor &amp; Haul</h1>
+              <span id="pass-badge" class="hidden text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-400 text-slate-950">Pass</span>
+            </div>
+            <p id="boat-subtitle" class="text-[11px] sm:text-xs text-slate-600 truncate">🚣 Small Skiff &bull; 6 Spots &bull; Hold 6</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-1.5 shrink-0">
+          <div class="bg-emerald-50 border border-emerald-200 rounded-xl px-2.5 py-1 text-right">
+            <div class="text-[9px] uppercase tracking-wider text-emerald-700 font-bold">Cash</div>
+            <div id="cash-display" class="text-sm sm:text-base font-extrabold text-emerald-700">$500</div>
+          </div>
+          <div class="bg-fuchsia-50 border border-fuchsia-200 rounded-xl px-2.5 py-1 text-right">
+            <div class="text-[9px] uppercase tracking-wider text-fuchsia-700 font-bold">Pearls</div>
+            <div id="pearls-display" class="text-sm sm:text-base font-extrabold text-fuchsia-700">💎 10</div>
+          </div>
+          <button id="sound-toggle" type="button" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs transition active:scale-95 cursor-pointer" aria-label="Toggle sound effects">
+            🔊
+          </button>
+        </div>
+      </div>
+
+      <!-- Compact Resource Strip -->
+      <div class="grid grid-cols-3 gap-2 text-xs">
+        <div class="bg-sky-50 border border-sky-200 rounded-xl px-2.5 py-1.5 flex items-center justify-between">
+          <span id="weather-display" class="font-semibold text-sky-900 truncate">☀️ Calm</span>
+          <span id="season-display" class="font-bold text-slate-700 shrink-0 ml-1">🌸 Spr Y1</span>
+        </div>
+        <div class="bg-amber-50 border border-amber-200 rounded-xl px-2.5 py-1.5 flex items-center justify-between gap-1">
+          <span id="fuel-display" class="font-bold text-amber-900 truncate">⛽ 20/20</span>
+          <button id="refuel-btn" type="button" class="px-1.5 py-0.5 rounded bg-amber-400 hover:bg-amber-300 text-slate-950 text-[10px] font-bold active:scale-95 cursor-pointer disabled:bg-slate-200 disabled:text-slate-400">
+            Fill
+          </button>
+        </div>
+        <div class="bg-cyan-50 border border-cyan-200 rounded-xl px-2.5 py-1.5 flex items-center justify-between gap-1">
+          <span id="ice-display" class="font-bold text-cyan-900 truncate">🧊 10/20</span>
+          <button id="buy-ice-btn" type="button" class="px-1.5 py-0.5 rounded bg-cyan-400 hover:bg-cyan-300 text-slate-950 text-[10px] font-bold active:scale-95 cursor-pointer disabled:bg-slate-200 disabled:text-slate-400">
+            Fill
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- 60-Second Interactive Onboarding Banner -->
+    <div id="tutorial-banner" class="hidden mb-3 px-3.5 py-2.5 rounded-xl bg-amber-100 border border-amber-300 text-xs sm:text-sm text-amber-950 flex items-center justify-between gap-2 shadow-sm">
+      <div class="flex items-center gap-2">
+        <span class="text-base">🎓</span>
+        <span id="tutorial-text" class="font-semibold">Step 1/3: Tap any open water spot below to deploy your Clam Rake.</span>
+      </div>
+      <button id="tutorial-skip-btn" type="button" class="shrink-0 text-[11px] font-bold text-amber-800 hover:text-slate-900 underline cursor-pointer">
+        Skip
+      </button>
+    </div>
+
+    <!-- Global Status Toast -->
+    <div id="status-banner" class="mb-3.5 px-3.5 py-2 rounded-xl bg-white/90 border border-sky-200 text-xs sm:text-sm text-slate-700 flex items-center justify-between gap-2 shadow-sm">
+      <div class="flex items-center gap-2 min-w-0">
+        <span>💡</span>
+        <span id="status-text" class="truncate font-medium">Tap a water spot to deploy gear, or switch tabs below!</span>
+      </div>
+      <span id="season-progress-badge" class="shrink-0 text-[11px] font-bold text-sky-800 bg-sky-100 border border-sky-200 px-2 py-0.5 rounded-lg">
+        0/15 Hauls
+      </span>
+      <button id="next-season-btn" type="button" class="hidden shrink-0 px-2.5 py-1 rounded-lg bg-sky-500 text-white text-xs font-bold cursor-pointer">
+        Next ⏭️
+      </button>
+    </div>
+
+    <!-- TAB 1: GROUNDS (Live Animated Harbor + Spots + Clean Gear Cards) -->
+    <div id="tab-grounds" class="space-y-3.5">
+      <!-- Live Animated Harbor Scene (Reflects Weather, Boat Tier, and Crew) -->
+      <section class="rounded-2xl overflow-hidden border border-sky-300 shadow-md bg-sky-900">
+        <div id="harbor-scene" class="w-full">
+          <!-- Dynamic SVG Harbor rendered by JavaScript -->
+        </div>
+      </section>
+
+      <section class="bg-white/95 border border-sky-200 rounded-2xl p-3.5 sm:p-4 shadow-md">
+        <div class="flex items-center justify-between mb-2.5">
+          <h2 class="text-base font-bold text-slate-900 flex items-center gap-1.5">
+            <span>🌊</span> Fishing Grounds
+          </h2>
+          <span id="weather-effect-note" class="text-[11px] font-medium text-slate-500">1 fuel/deploy &bull; Normal haul</span>
+        </div>
+        <div id="ocean-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3">
+          <!-- Tiles rendered by JavaScript -->
+        </div>
+      </section>
+
+      <section class="bg-white/95 border border-sky-200 rounded-2xl p-3.5 sm:p-4 shadow-md">
+        <h2 class="text-base font-bold text-slate-900 mb-2.5 flex items-center gap-1.5">
+          <span>🎣</span> Gear &amp; Permits
+        </h2>
+        <div id="gear-list" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <!-- Decluttered Gear cards rendered by JavaScript -->
+        </div>
+      </section>
+    </div>
+
+    <!-- TAB 2: FLEET (Offshore Expeditions + Shipyard + Crew) -->
+    <div id="tab-fleet" class="hidden space-y-3.5">
+      <section class="bg-white/95 border border-sky-200 rounded-2xl p-4 shadow-md">
+        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+            <span>🧭</span> Offshore Fleet Dispatch
+          </h2>
+          <span id="fleet-slots-badge" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-sky-100 text-sky-800 border border-sky-200">
+            0 / 1 Boats at Sea
+          </span>
+        </div>
+        <div id="expedition-panel"></div>
+      </section>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+        <section class="bg-white/95 border border-indigo-200 rounded-2xl p-4 shadow-md">
+          <h2 class="text-base font-bold text-slate-900 mb-3 flex items-center gap-2">
+            <span>🚤</span> Shipyard Upgrades
+          </h2>
+          <div id="shipyard-panel"></div>
+        </section>
+
+        <section class="bg-white/95 border border-cyan-200 rounded-2xl p-4 shadow-md">
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+              <span>🧑‍✈️</span> Deckhand Crew
+            </h2>
+            <span id="crew-count-badge" class="text-xs font-bold px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-800 border border-cyan-200">
+              0 / 2 Hired
+            </span>
+          </div>
+          <p class="text-xs text-slate-600 mb-3">Auto-hauls ready spots ($60/season wage each).</p>
+          <div id="crew-panel"></div>
+        </section>
+      </div>
+    </div>
+
+    <!-- TAB 3: DOCK (Boat Hold + Processors + Contracts) -->
+    <div id="tab-dock" class="hidden space-y-3.5">
+      <section class="bg-white/95 border border-amber-200 rounded-2xl p-4 shadow-md">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+            <span>📦</span> Boat Hold &amp; Freshness
+          </h2>
+          <div class="flex items-center gap-1.5">
+            <span id="hold-capacity-badge" class="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">0 / 6</span>
+            <span id="hold-value-badge" class="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">$0</span>
+          </div>
+        </div>
+
+        <div id="freshness-bar" class="mb-3 px-3 py-2 rounded-xl bg-sky-50 border border-sky-200 flex items-center justify-between text-xs">
+          <span class="text-slate-700 font-semibold">❄️ Catch Freshness</span>
+          <span id="freshness-badge" class="font-bold text-emerald-700">100% (Grade A+ • +15%)</span>
+        </div>
+
+        <div id="hold-list" class="space-y-2 text-sm mb-3"></div>
+        <div id="selling-to-label" class="text-xs text-slate-600 mb-2 text-center"></div>
+
+        <button id="sell-all-btn" type="button" disabled class="w-full py-3 px-4 rounded-xl font-bold text-sm transition active:scale-95 bg-amber-400 hover:bg-amber-300 text-slate-950 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed cursor-pointer shadow-sm">
+          Sell Catch at Dock ($0)
+        </button>
+      </section>
+
+      <section class="bg-white/95 border border-teal-200 rounded-2xl p-4 shadow-md">
+        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+            <span>🏭</span> Seafood Processors
+          </h2>
+          <span class="text-xs text-teal-700 font-medium">+5% payout per loyalty tier</span>
+        </div>
+        <div id="processor-list" class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4"></div>
+        <div id="contract-box" class="bg-teal-50 border border-teal-200 rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3"></div>
+      </section>
+    </div>
+
+    <!-- TAB 4: HARBOR SHOP & CAREER -->
+    <div id="tab-shop" class="hidden space-y-3.5">
+      <section class="bg-white/95 border border-fuchsia-200 rounded-2xl p-4 shadow-md">
+        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+            <span>🎬</span> Dockside Radio (Rewarded Ads)
+          </h2>
+          <span class="text-[11px] text-fuchsia-700 font-semibold">Opt-in rewards</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <button id="ad-refill-btn" type="button" class="p-3 rounded-xl bg-cyan-50 hover:bg-cyan-100 border border-cyan-200 text-left transition active:scale-95 cursor-pointer">
+            <div class="text-xs font-bold text-cyan-700">🎬 Watch Ad</div>
+            <div class="text-sm font-bold text-slate-900 mt-0.5">Free Fuel &amp; Ice Refill</div>
+            <div class="text-[11px] text-slate-600 mt-0.5">Fills both tanks to max</div>
+          </button>
+          <button id="ad-speedup-btn" type="button" class="p-3 rounded-xl bg-sky-50 hover:bg-sky-100 border border-sky-200 text-left transition active:scale-95 cursor-pointer">
+            <div class="text-xs font-bold text-sky-700">🎬 Watch Ad</div>
+            <div class="text-sm font-bold text-slate-900 mt-0.5">50% Fleet Speed-Up</div>
+            <div class="text-[11px] text-slate-600 mt-0.5">Halves active trip timers</div>
+          </button>
+          <button id="ad-pearls-btn" type="button" class="p-3 rounded-xl bg-fuchsia-50 hover:bg-fuchsia-100 border border-fuchsia-200 text-left transition active:scale-95 cursor-pointer">
+            <div class="text-xs font-bold text-fuchsia-700">🎬 Watch Ad</div>
+            <div class="text-sm font-bold text-slate-900 mt-0.5">+1 Harbor Pearl 💎</div>
+            <div class="text-[11px] text-slate-600 mt-0.5">Use for quotas &amp; instant trips</div>
+          </button>
+        </div>
+      </section>
+
+      <section class="bg-white/95 border border-amber-200 rounded-2xl p-4 shadow-md">
+        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+            <span>🛍️</span> Harbor Store
+          </h2>
+          <span class="text-[11px] text-amber-700 font-semibold">Play Billing Ready</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 flex items-center justify-between gap-3">
+            <div>
+              <div class="font-bold text-sm text-slate-900">🎁 Starter Fisher Pack</div>
+              <div class="text-xs text-slate-600 mt-0.5">+25 💎 Pearls &amp; +2 Hold Slots</div>
+            </div>
+            <button id="iap-starter-btn" type="button" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold active:scale-95 cursor-pointer shrink-0 disabled:bg-slate-200 disabled:text-slate-500">
+              $1.99
+            </button>
+          </div>
+
+          <div class="bg-amber-50 border border-amber-300 rounded-xl p-3.5 flex items-center justify-between gap-3">
+            <div>
+              <div class="font-bold text-sm text-amber-950">👑 Captain's Pass</div>
+              <div class="text-xs text-amber-800 mt-0.5">Auto-Ice, +20% Contracts, +1 Fleet Slot</div>
+            </div>
+            <button id="iap-pass-btn" type="button" class="px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-extrabold active:scale-95 cursor-pointer shrink-0">
+              $4.99/mo
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section id="dev-timer-section" class="hidden bg-white/95 border border-slate-200 rounded-2xl p-4 shadow-md flex items-center justify-between gap-3">
+        <div>
+          <h2 class="text-sm font-bold text-slate-900">⏱️ Dev Timer Mode</h2>
+          <p class="text-xs text-slate-600 mt-0.5">Switch between Fast Demo and Play Store Idle.</p>
+        </div>
+        <button id="idle-mode-btn" type="button" class="px-3 py-2 rounded-xl bg-slate-100 border border-slate-300 text-xs font-bold text-sky-700 cursor-pointer shrink-0">
+          Idle (15m–6h)
+        </button>
+      </section>
+
+      <section class="bg-white/95 border border-slate-200 rounded-2xl p-4 shadow-md">
+        <h2 class="text-base font-bold text-slate-900 mb-3 flex items-center gap-2">
+          <span>📊</span> Career Ledger
+        </h2>
+        <div class="grid grid-cols-3 gap-3">
+          <div class="bg-sky-50 border border-sky-200 rounded-xl p-3 text-center">
+            <div class="text-[11px] uppercase tracking-wider text-slate-500 font-bold">Crates Hauled</div>
+            <div id="stat-hauled" class="text-lg font-extrabold text-sky-700 mt-0.5">0</div>
+          </div>
+          <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center">
+            <div class="text-[11px] uppercase tracking-wider text-slate-500 font-bold">Total Revenue</div>
+            <div id="stat-revenue" class="text-lg font-extrabold text-emerald-700 mt-0.5">$0</div>
+          </div>
+          <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center">
+            <div class="text-[11px] uppercase tracking-wider text-slate-500 font-bold">Contracts</div>
+            <div id="stat-contracts" class="text-lg font-extrabold text-amber-700 mt-0.5">0</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="bg-white/95 border border-amber-200 rounded-2xl p-4 shadow-md">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+            <span>🏆</span> Captain Achievements
+          </h2>
+          <span id="achievements-badge" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+            0 / 6 Unlocked
+          </span>
+        </div>
+        <div id="achievements-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5"></div>
+      </section>
+
+      <section class="bg-white/95 border border-slate-200 rounded-2xl p-4 shadow-md flex items-center justify-between gap-3">
+        <div>
+          <h2 class="text-sm font-bold text-slate-900">⚙️ Career Settings</h2>
+          <p id="ad-cap-note" class="text-xs text-slate-600 mt-0.5">Daily rewarded ads remaining: 4 / 4</p>
+        </div>
+        <button id="reset-open-btn" type="button" class="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-xs font-bold text-rose-700 active:scale-95 cursor-pointer shrink-0">
+          🔄 Reset Career
+        </button>
+      </section>
+    </div>
+  </div>
+
+  <!-- Fixed Thumb-Zone Bottom Navigation Bar -->
+  <nav class="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-sky-200 shadow-lg z-40">
+    <div class="max-w-3xl mx-auto grid grid-cols-4 h-16">
+      <button type="button" data-tab="grounds" class="nav-tab-btn flex flex-col items-center justify-center gap-0.5 text-sky-600 font-bold text-xs cursor-pointer">
+        <span class="text-lg">🌊</span>
+        <span>Grounds</span>
+      </button>
+      <button type="button" data-tab="fleet" class="nav-tab-btn flex flex-col items-center justify-center gap-0.5 text-slate-500 font-medium text-xs cursor-pointer">
+        <span class="text-lg">🧭</span>
+        <span>Fleet</span>
+      </button>
+      <button type="button" data-tab="dock" class="nav-tab-btn flex flex-col items-center justify-center gap-0.5 text-slate-500 font-medium text-xs cursor-pointer relative">
+        <span class="text-lg">🏭</span>
+        <span>Dock</span>
+        <span id="nav-hold-dot" class="hidden absolute top-2 right-6 w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+      </button>
+      <button type="button" data-tab="shop" class="nav-tab-btn flex flex-col items-center justify-center gap-0.5 text-slate-500 font-medium text-xs cursor-pointer">
+        <span class="text-lg">💎</span>
+        <span>Shop</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Simulated Rewarded Video Ad Modal -->
+  <div id="ad-modal" class="fixed inset-0 bg-slate-900/75 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+    <div class="bg-white border border-fuchsia-200 rounded-2xl p-5 max-w-sm w-full text-center shadow-2xl">
+      <div class="text-3xl mb-2">🎬</div>
+      <h3 class="text-lg font-bold text-slate-900 mb-1">Sponsor Message</h3>
+      <p id="ad-modal-desc" class="text-sm text-slate-600 mb-4">Reward unlocks in 3s...</p>
+      <div class="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden">
+        <div id="ad-progress-bar" class="h-full bg-fuchsia-500 transition-all duration-300" style="width: 0%"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- In-page Reset Confirmation Modal -->
+  <div id="reset-modal" class="fixed inset-0 bg-slate-900/75 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+    <div class="bg-white border border-slate-200 rounded-2xl p-5 max-w-sm w-full shadow-2xl">
+      <h3 class="text-lg font-bold text-slate-900 mb-1.5">Start a New Career?</h3>
+      <p class="text-sm text-slate-600 mb-4">This clears your saved cash, pearls, boat upgrades, crew, licenses, and processor reputation.</p>
+      <div class="flex justify-end gap-2.5">
+        <button id="reset-cancel-btn" type="button" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-semibold text-slate-700 cursor-pointer">Cancel</button>
+        <button id="reset-confirm-btn" type="button" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-sm font-bold text-white cursor-pointer">Reset Game</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ==========================================
+    // 1. GAME DATA & CUSTOM SVG SPECIES ART
+    // ==========================================
+    const DEV_MODE = false;
+    const SAVE_KEY = 'harbor_and_haul_save_v17';
+    const FUEL_PRICE_PER_UNIT = 8;
+    const ICE_MAX_CAPACITY = 20;
+    const ICE_PRICE_PER_UNIT = 8;
+    const CREW_COSTS = [1200, 3500];
+    const CREW_WAGE_PER_SEASON = 60;
+    const HAULS_PER_SEASON = 15;
+    const MAX_DAILY_ADS = 4;
+
+    const SPECIES_SVG = {
+      clam: `<svg viewBox="0 0 36 36" class="w-8 h-8 shrink-0" aria-hidden="true"><path d="M18 6C10 6 5 13 6 22c1 5 6 8 12 8s11-3 12-8c1-9-4-16-12-16z" fill="#fed7aa" stroke="#c2410c" stroke-width="2"/><path d="M18 6v24M12 8l4 21M24 8l-4 21" stroke="#ea580c" stroke-width="1.5" stroke-linecap="round"/></svg>`,
+      rockfish: `<svg viewBox="0 0 36 36" class="w-8 h-8 shrink-0" aria-hidden="true"><path d="M4 18c4-6 12-9 20-5l8-5-2 10 2 10-8-5c-8 4-16 1-20-5z" fill="#fb7185" stroke="#be123c" stroke-width="2"/><circle cx="11" cy="16" r="2" fill="#0f172a"/><path d="M16 14v8M20 13v10" stroke="#ffe4e6" stroke-width="1.6" stroke-linecap="round"/></svg>`,
+      crab: `<svg viewBox="0 0 36 36" class="w-8 h-8 shrink-0" aria-hidden="true"><ellipse cx="18" cy="21" rx="9" ry="7" fill="#ef4444" stroke="#991b1b" stroke-width="2"/><path d="M11 15c-3-4-6-3-5 1M25 15c3-4 6-3 5 1M8 21H4M32 21h-4M9 25l-4 3M27 25l4 3" stroke="#b91c1c" stroke-width="2" stroke-linecap="round"/><circle cx="15" cy="18" r="1.5" fill="#0f172a"/><circle cx="21" cy="18" r="1.5" fill="#0f172a"/></svg>`,
+      halibut: `<svg viewBox="0 0 36 36" class="w-8 h-8 shrink-0" aria-hidden="true"><path d="M4 18c5-8 15-10 22-4l6-4-1 8 1 8-6-4c-7 6-17 4-22-4z" fill="#fbbf24" stroke="#b45309" stroke-width="2"/><circle cx="11" cy="15" r="1.6" fill="#0f172a"/><circle cx="14" cy="19" r="1.6" fill="#0f172a"/></svg>`,
+      tuna: `<svg viewBox="0 0 36 36" class="w-8 h-8 shrink-0" aria-hidden="true"><path d="M3 18c6-7 16-8 23-3l7-6-2 9 2 9-7-6c-7 5-17 4-23-3z" fill="#38bdf8" stroke="#0369a1" stroke-width="2"/><path d="M9 18h14" stroke="#e0f2fe" stroke-width="2" stroke-linecap="round"/><circle cx="9" cy="16" r="1.7" fill="#0f172a"/></svg>`
+    };
+
+    const SEASONS = [
+      { id: 'spring', name: 'Spring', short: 'Spr', icon: '🌸' },
+      { id: 'summer', name: 'Summer', short: 'Sum', icon: '☀️' },
+      { id: 'fall',   name: 'Fall',   short: 'Fal', icon: '🍂' },
+      { id: 'winter', name: 'Winter', short: 'Win', icon: '❄️' }
+    ];
+
+    const WEATHERS = [
+      { id: 'calm',   name: 'Calm Seas',    short: 'Calm',   icon: '☀️', timeMult: 1.0,  fuelCost: 1, priceMult: 1.0,  note: '1 fuel/deploy • Normal haul' },
+      { id: 'choppy', name: 'Choppy Swell', short: 'Choppy', icon: '🌊', timeMult: 1.25, fuelCost: 1, priceMult: 1.05, note: '1 fuel/deploy • +25% time, +5% price' },
+      { id: 'gale',   name: 'Gale Warning', short: 'Gale',   icon: '⛈️', timeMult: 1.5,  fuelCost: 2, priceMult: 1.15, note: '2 fuel/deploy • +50% time, +15% price' }
+    ];
+
+    const BOATS = [
+      { id: 'skiff',   name: 'Small Skiff',    icon: '🚣', spots: 6,  holdCapacity: 6,  fuelCapacity: 20, speedMultiplier: 1.0,  cost: 0 },
+      { id: 'trawler', name: 'Bay Trawler',    icon: '⛵', spots: 9,  holdCapacity: 12, fuelCapacity: 35, speedMultiplier: 1.25, cost: 4500 },
+      { id: 'seine',   name: 'Offshore Seine', icon: '🚢', spots: 12, holdCapacity: 20, fuelCapacity: 50, speedMultiplier: 1.5,  cost: 18000 }
+    ];
+
+    const SPECIES = {
+      clam: {
+        id: 'clam', name: 'Manila Clams', icon: '🐚', gearName: 'Clam Rake',
+        cost: 20, sellPrice: 38, durationMs: 45000, seasonalQuota: 30, quotaLeaseCost: 120,
+        openSeasons: ['spring', 'summer', 'fall', 'winter'], seasonLabel: 'Year-Round',
+        licenseCost: 0, licenseName: 'Clam Permit', minBoatIndex: 0
+      },
+      rockfish: {
+        id: 'rockfish', name: 'Pacific Rockfish', icon: '🐟', gearName: 'Rockfish Jig',
+        cost: 60, sellPrice: 135, durationMs: 180000, seasonalQuota: 20, quotaLeaseCost: 260,
+        openSeasons: ['spring', 'summer'], seasonLabel: 'Spring & Summer',
+        licenseCost: 150, licenseName: 'Rockfish License', minBoatIndex: 0
+      },
+      crab: {
+        id: 'crab', name: 'Dungeness Crab', icon: '🦀', gearName: 'Crab Pot',
+        cost: 120, sellPrice: 280, durationMs: 480000, seasonalQuota: 15, quotaLeaseCost: 420,
+        openSeasons: ['fall', 'winter'], seasonLabel: 'Fall & Winter',
+        licenseCost: 300, licenseName: 'Crab Pot Permit', minBoatIndex: 0
+      },
+      halibut: {
+        id: 'halibut', name: 'Pacific Halibut', icon: '🐠', gearName: 'Halibut Longline',
+        cost: 250, sellPrice: 620, durationMs: 900000, seasonalQuota: 12, quotaLeaseCost: 650,
+        openSeasons: ['spring', 'summer', 'fall'], seasonLabel: 'Spring–Fall',
+        licenseCost: 500, licenseName: 'Halibut IFQ Permit', minBoatIndex: 1
+      },
+      tuna: {
+        id: 'tuna', name: 'Albacore Tuna', icon: '🐡', gearName: 'Tuna Troll Line',
+        cost: 450, sellPrice: 1150, durationMs: 1500000, seasonalQuota: 10, quotaLeaseCost: 950,
+        openSeasons: ['summer', 'fall'], seasonLabel: 'Summer & Fall',
+        licenseCost: 900, licenseName: 'Offshore Tuna Permit', minBoatIndex: 2
+      }
+    };
+
+    const EXPEDITIONS = [
+      {
+        id: 'coastal', name: 'Coastal Bank Run', icon: '⛵', minBoatIndex: 0,
+        durationMs: 25000, idleDurationMs: 900000, cashCost: 90, fuelCost: 4,
+        rewards: [{ speciesId: 'clam', min: 2, max: 3 }, { speciesId: 'rockfish', min: 1, max: 2 }],
+        summary: '3–5 crates (Clams & Rockfish)'
+      },
+      {
+        id: 'shelf', name: 'Continental Shelf Voyage', icon: '🚢', minBoatIndex: 1,
+        durationMs: 45000, idleDurationMs: 7200000, cashCost: 220, fuelCost: 8,
+        rewards: [{ speciesId: 'halibut', min: 2, max: 3 }, { speciesId: 'crab', min: 2, max: 3 }],
+        summary: '4–6 crates (Halibut & Crab)'
+      },
+      {
+        id: 'pelagic', name: 'Deep Pelagic Expedition', icon: '🌊', minBoatIndex: 2,
+        durationMs: 75000, idleDurationMs: 21600000, cashCost: 450, fuelCost: 14,
+        rewards: [{ speciesId: 'tuna', min: 3, max: 5 }, { speciesId: 'halibut', min: 2, max: 3 }],
+        summary: '5–8 crates (Tuna & Halibut)'
+      }
+    ];
+
+    const ACHIEVEMENTS = [
+      { id: 'first_haul', name: 'First Haul', icon: '🐚', desc: 'Haul your first crate into the hold', reward: 50, check: (st) => (st.stats && st.stats.totalHauled >= 1) },
+      { id: 'licensed_captain', name: 'Licensed Captain', icon: '📜', desc: 'Own at least 3 fishing licenses', reward: 100, check: (st) => Object.values(st.licenses || {}).filter(Boolean).length >= 3 },
+      { id: 'fleet_commander', name: 'Fleet Commander', icon: '🚢', desc: 'Upgrade to the Offshore Seine', reward: 250, check: (st) => st.boatIndex >= 2 },
+      { id: 'trusted_supplier', name: 'Trusted Supplier', icon: '🤝', desc: 'Reach Tier 2 with any processor', reward: 125, check: (st) => Object.keys(PROCESSORS).some((id) => getProcessorTier(id) >= 2) },
+      { id: 'contract_closer', name: 'Contract Closer', icon: '📦', desc: 'Complete 3 processor contracts', reward: 150, check: (st) => (st.stats && st.stats.contractsCompleted >= 3) },
+      { id: 'highliner', name: 'Highliner', icon: '💰', desc: 'Earn $5,000 in lifetime revenue', reward: 300, check: (st) => (st.stats && st.stats.totalRevenue >= 5000) }
+    ];
+
+    const PROCESSORS = {
+      coop: { id: 'coop', name: 'Harbor Co-op', icon: '🤝', specialtyText: 'Fair rates on all catch', multipliers: { clam: 1.0, rockfish: 1.0, crab: 1.0, halibut: 1.0, tuna: 1.0 } },
+      shellfish: { id: 'shellfish', name: 'Pacific Shellfish', icon: '🦪', specialtyText: '+20% Clams & Crab, -15% Finfish', multipliers: { clam: 1.2, rockfish: 0.85, crab: 1.2, halibut: 0.85, tuna: 0.85 } },
+      cascadia: { id: 'cascadia', name: 'Cascadia Fresh', icon: '🐟', specialtyText: '+25% Finfish, -10% Shellfish', multipliers: { clam: 0.9, rockfish: 1.25, crab: 0.9, halibut: 1.25, tuna: 1.25 } }
+    };
+
+    // ==========================================
+    // 2. GAME STATE & SAVE/LOAD
+    // ==========================================
+    function createInitialState() {
+      return {
+        cash: 500,
+        pearls: 10,
+        captainsPass: false,
+        starterPackOwned: false,
+        idleMode: !DEV_MODE,
+        seasonHauls: 0,
+        adsWatchedToday: 0,
+        lastAdDay: new Date().toDateString(),
+        tutorialStep: 0,
+        lastSavedAt: Date.now(),
+        activeTab: 'grounds',
+        year: 1,
+        seasonIndex: 0,
+        weatherIndex: 0,
+        boatIndex: 0,
+        crewCount: 0,
+        fuel: BOATS[0].fuelCapacity,
+        ice: 10,
+        freshness: 100,
+        selectedSpeciesId: 'clam',
+        selectedProcessorId: 'coop',
+        soundEnabled: true,
+        licenses: { clam: true, rockfish: false, crab: false, halibut: false, tuna: false },
+        seasonCaught: { clam: 0, rockfish: 0, crab: 0, halibut: 0, tuna: 0 },
+        extraQuota: { clam: 0, rockfish: 0, crab: 0, halibut: 0, tuna: 0 },
+        hold: { clam: 0, rockfish: 0, crab: 0, halibut: 0, tuna: 0 },
+        processorRep: { coop: 0, shellfish: 0, cascadia: 0 },
+        expeditions: [],
+        achievements: {},
+        stats: { totalHauled: 0, totalRevenue: 0, contractsCompleted: 0 },
+        contract: { processorId: 'coop', speciesId: 'clam', requiredQty: 3, deliveredQty: 0, bonusCash: 75, bonusRep: 5 },
+        plots: Array.from({ length: BOATS[0].spots }, (_, index) => ({
+          id: index, status: 'empty', speciesId: null, startedAt: 0, endsAt: 0
+        }))
+      };
+    }
+
+    let state = createInitialState();
+
+    function saveGame() {
+      try { state.lastSavedAt = Date.now(); localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) {}
+    }
+
+    function loadGame() {
+      try {
+        const raw = localStorage.getItem(SAVE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed.cash === 'number' && Array.isArray(parsed.plots)) {
+          state = { ...createInitialState(), ...parsed };
+          const now = Date.now();
+          state.plots.forEach((p) => { if (p.status === 'fishing' && now >= p.endsAt) p.status = 'ready'; });
+          if (!Array.isArray(state.expeditions)) state.expeditions = [];
+          let offlineReturned = 0;
+          state.expeditions.forEach((exp) => {
+            if (exp.status === 'at_sea' && now >= exp.endsAt) { finalizeExpeditionHaul(exp); offlineReturned += 1; }
+          });
+          if (offlineReturned > 0) {
+            setTimeout(() => setStatus(`Welcome back! ${offlineReturned} offshore expedition(s) returned.`), 200);
+          }
+        }
+      } catch (e) {}
+    }
+
+    function getCurrentSeason() { return SEASONS[state.seasonIndex]; }
+    function getCurrentWeather() { return WEATHERS[state.weatherIndex] || WEATHERS[0]; }
+    function getCurrentBoat() {
+      const b = BOATS[state.boatIndex];
+      return { ...b, holdCapacity: b.holdCapacity + (state.starterPackOwned ? 2 : 0) };
+    }
+    function getMaxFleetSlots() { return (state.boatIndex + 1) + (state.captainsPass ? 1 : 0); }
+    function getHoldCount() { return Object.values(state.hold).reduce((sum, qty) => sum + (qty || 0), 0); }
+    function getTotalQuota(speciesId) { return SPECIES[speciesId].seasonalQuota + ((state.extraQuota && state.extraQuota[speciesId]) || 0); }
+    function isSpeciesInSeason(speciesId) { return SPECIES[speciesId].openSeasons.includes(getCurrentSeason().id); }
+    function getAdjustedDurationMs(speciesId) {
+      return Math.round((SPECIES[speciesId].durationMs * getCurrentWeather().timeMult) / getCurrentBoat().speedMultiplier);
+    }
+    function getExpeditionDurationMs(route) {
+      const base = state.idleMode ? (route.idleDurationMs || route.durationMs) : route.durationMs;
+      return Math.round(base * getCurrentWeather().timeMult);
+    }
+    function formatDurationShort(ms) {
+      const secs = Math.round(ms / 1000);
+      if (secs < 120) return `${secs}s`;
+      const mins = Math.round(secs / 60);
+      if (mins < 60) return `${mins}m`;
+      const hrs = (mins / 60).toFixed(1).replace(/\.0$/, '');
+      return `${hrs}h`;
+    }
+    function getProcessorTier(processorId) { return Math.min(5, Math.floor((state.processorRep[processorId] || 0) / 10)); }
+    function getFreshnessMultiplier() {
+      const f = typeof state.freshness === 'number' ? state.freshness : 100;
+      if (f >= 90) return 1.15;
+      if (f >= 70) return 1.0;
+      return 0.8;
+    }
+    function getProcessorPrice(processorId, speciesId) {
+      const base = SPECIES[speciesId].sellPrice;
+      const specialtyMult = PROCESSORS[processorId].multipliers[speciesId] || 1.0;
+      const loyaltyMult = 1 + getProcessorTier(processorId) * 0.05;
+      return Math.round(base * specialtyMult * loyaltyMult * getCurrentWeather().priceMult * getFreshnessMultiplier());
+    }
+    function generateNewContract(processorId) {
+      const openList = Object.keys(SPECIES).filter((id) => isSpeciesInSeason(id));
+      const pool = openList.length > 0 ? openList : ['clam'];
+      const speciesId = pool[Math.floor(Math.random() * pool.length)];
+      const requiredQty = speciesId === 'clam' ? 4 : 3;
+      const bonusCash = Math.round(SPECIES[speciesId].sellPrice * requiredQty * 0.45);
+      state.contract = { processorId, speciesId, requiredQty, deliveredQty: 0, bonusCash, bonusRep: 6 };
+    }
+
+    // ==========================================
+    // 3. JUICE: AUDIO, HAPTICS & FLOATING POPUPS
+    // ==========================================
+    let audioCtx = null;
+    function playTone(freq, duration, type = 'sine', volume = 0.08) {
+      if (!state.soundEnabled) return;
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function buzz(ms = 14) {
+      try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {}
+    }
+
+    function spawnFloatingText(text, clientX, clientY, colorClass = 'text-emerald-600 bg-white/95 border-emerald-300') {
+      const el = document.createElement('div');
+      el.className = `float-popup px-2.5 py-1 rounded-full border text-xs font-extrabold shadow-md ${colorClass}`;
+      el.style.left = `${clientX || window.innerWidth / 2}px`;
+      el.style.top = `${(clientY || 260) - 16}px`;
+      el.textContent = text;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 950);
+    }
+
+    // ==========================================
+    // 4. CORE ACTIONS
+    // ==========================================
+    function setStatus(message) {
+      document.getElementById('status-text').textContent = message;
+    }
+
+    function switchTab(tabName) {
+      state.activeTab = tabName;
+      ['grounds', 'fleet', 'dock', 'shop'].forEach((t) => {
+        const el = document.getElementById(`tab-${t}`);
+        if (el) el.classList.toggle('hidden', t !== tabName);
+      });
+      document.querySelectorAll('.nav-tab-btn').forEach((btn) => {
+        const active = btn.dataset.tab === tabName;
+        btn.className = `nav-tab-btn flex flex-col items-center justify-center gap-0.5 text-xs cursor-pointer relative ${
+          active ? 'text-sky-600 font-bold' : 'text-slate-500 font-medium'
+        }`;
+      });
+      saveGame();
+    }
+
+    function rollWeather(silent = false) {
+      const roll = Math.random();
+      const nextIdx = roll > 0.78 ? 2 : (roll > 0.42 ? 1 : 0);
+      if (nextIdx !== state.weatherIndex) {
+        state.weatherIndex = nextIdx;
+        const w = getCurrentWeather();
+        if (!silent) setStatus(`Weather shift: ${w.icon} ${w.name}.`);
+        saveGame();
+        renderHeader();
+        renderHarborScene();
+        renderGearList();
+        renderHold();
+      }
+    }
+
+    function buyIce() {
+      const needed = ICE_MAX_CAPACITY - (state.ice || 0);
+      if (needed <= 0) return;
+      const affordable = Math.min(needed, Math.floor(state.cash / ICE_PRICE_PER_UNIT));
+      if (affordable <= 0) { setStatus(`Need $${ICE_PRICE_PER_UNIT}/unit for ice!`); playTone(180, 0.15, 'sawtooth', 0.05); return; }
+      state.cash -= affordable * ICE_PRICE_PER_UNIT;
+      state.ice += affordable;
+      buzz(); playTone(523, 0.08, 'triangle', 0.06);
+      setStatus(`Loaded +${affordable} ice.`);
+      saveGame(); render();
+    }
+
+    function refuelBoat() {
+      const boat = getCurrentBoat();
+      const needed = boat.fuelCapacity - state.fuel;
+      if (needed <= 0) return;
+      const affordable = Math.min(needed, Math.floor(state.cash / FUEL_PRICE_PER_UNIT));
+      if (affordable <= 0) { setStatus(`Need $${FUEL_PRICE_PER_UNIT}/unit for fuel!`); playTone(180, 0.15, 'sawtooth', 0.05); return; }
+      state.cash -= affordable * FUEL_PRICE_PER_UNIT;
+      state.fuel += affordable;
+      buzz(); playTone(440, 0.08, 'triangle', 0.06);
+      setStatus(`Refueled +${affordable} units.`);
+      saveGame(); render();
+    }
+
+    function advanceSeason() {
+      state.seasonIndex = (state.seasonIndex + 1) % SEASONS.length;
+      if (state.seasonIndex === 0) state.year += 1;
+      state.seasonHauls = 0;
+      state.seasonCaught = { clam: 0, rockfish: 0, crab: 0, halibut: 0, tuna: 0 };
+      state.extraQuota = { clam: 0, rockfish: 0, crab: 0, halibut: 0, tuna: 0 };
+
+      let wageNote = '';
+      if (state.crewCount > 0) {
+        const paid = Math.min(state.cash, state.crewCount * CREW_WAGE_PER_SEASON);
+        state.cash -= paid;
+        wageNote = ` Paid $${paid} crew wages.`;
+      }
+      rollWeather(true);
+      let eventNote = '';
+      const evRoll = Math.random();
+      if (evRoll < 0.35) { state.cash += 50; eventNote = ' 🛟 USCG Rebate: +$50!'; }
+      else if (evRoll < 0.65) {
+        const gain = Math.min(5, getCurrentBoat().fuelCapacity - state.fuel);
+        state.fuel += gain;
+        if (gain > 0) eventNote = ` ⛽ Dock Fuel Bonus: +${gain}!`;
+      }
+      const season = getCurrentSeason();
+      playTone(392, 0.1, 'triangle', 0.06);
+      setTimeout(() => playTone(523, 0.14, 'triangle', 0.06), 80);
+      setStatus(`${season.icon} ${season.name} Yr ${state.year}! Quotas reset.${wageNote}${eventNote}`);
+      saveGame(); render();
+    }
+
+    function buyLicense(speciesId) {
+      const item = SPECIES[speciesId];
+      if (state.licenses[speciesId]) return;
+      if (state.cash < item.licenseCost) { setStatus(`Need $${item.licenseCost} for ${item.licenseName}.`); playTone(180, 0.15, 'sawtooth', 0.05); return; }
+      state.cash -= item.licenseCost;
+      state.licenses[speciesId] = true;
+      state.selectedSpeciesId = speciesId;
+      buzz(20); playTone(587, 0.1, 'sine');
+      setStatus(`Purchased ${item.licenseName}!`);
+      saveGame(); render();
+    }
+
+    function buyExtraQuota(speciesId, usePearls = false) {
+      const item = SPECIES[speciesId];
+      if (usePearls) {
+        if (state.pearls < 2) { setStatus('Need 2 💎 Pearls!'); playTone(180, 0.15, 'sawtooth', 0.05); return; }
+        state.pearls -= 2;
+      } else {
+        if (state.cash < item.quotaLeaseCost) { setStatus(`Need $${item.quotaLeaseCost} for +10 quota.`); playTone(180, 0.15, 'sawtooth', 0.05); return; }
+        state.cash -= item.quotaLeaseCost;
+      }
+      state.extraQuota[speciesId] = (state.extraQuota[speciesId] || 0) + 10;
+      buzz(); playTone(587, 0.1, 'sine');
+      setStatus(`Leased +10 ${item.name} quota!`);
+      saveGame(); render();
+    }
+
+    function upgradeBoat() {
+      const nextBoat = BOATS[state.boatIndex + 1];
+      if (!nextBoat) return;
+      if (state.cash < nextBoat.cost) { setStatus(`Need $${nextBoat.cost} for ${nextBoat.name}.`); playTone(180, 0.15, 'sawtooth', 0.05); return; }
+      state.cash -= nextBoat.cost;
+      state.boatIndex += 1;
+      state.fuel = nextBoat.fuelCapacity;
+      while (state.plots.length < nextBoat.spots) {
+        state.plots.push({ id: state.plots.length, status: 'empty', speciesId: null, startedAt: 0, endsAt: 0 });
+      }
+      buzz(25); playTone(523, 0.1, 'sine'); setTimeout(() => playTone(784, 0.2, 'sine'), 100);
+      setStatus(`Upgraded to ${nextBoat.icon} ${nextBoat.name}!`);
+      saveGame(); render();
+    }
+
+    function hireCrew() {
+      if (state.crewCount >= CREW_COSTS.length) return;
+      const cost = CREW_COSTS[state.crewCount];
+      if (state.cash < cost) { setStatus(`Need $${cost} to hire Deckhand #${state.crewCount + 1}.`); playTone(180, 0.15, 'sawtooth', 0.05); return; }
+      state.cash -= cost;
+      state.crewCount += 1;
+      buzz(); playTone(523, 0.1, 'sine');
+      setStatus(`Hired Deckhand #${state.crewCount}!`);
+      saveGame(); render();
+    }
+
+    function selectProcessor(processorId) {
+      state.selectedProcessorId = processorId;
+      if (state.contract.processorId !== processorId) generateNewContract(processorId);
+      buzz(); playTone(440, 0.06, 'sine', 0.04);
+      setStatus(`Delivering to ${PROCESSORS[processorId].name}.`);
+      saveGame(); render();
+    }
+
+    function deployGear(plotId, e) {
+      const plot = state.plots[plotId];
+      const item = SPECIES[state.selectedSpeciesId];
+      const weather = getCurrentWeather();
+      if (plot.status !== 'empty') return;
+      if (state.boatIndex < (item.minBoatIndex || 0)) { setStatus(`Upgrade to ${BOATS[item.minBoatIndex].name} for ${item.gearName}.`); playTone(180, 0.15, 'sawtooth', 0.05); return; }
+      if (!state.licenses[item.id]) { setStatus(`Buy ${item.licenseName} ($${item.licenseCost}) first.`); playTone(180, 0.15, 'sawtooth', 0.05); return; }
+      if (!isSpeciesInSeason(item.id)) { setStatus(`${item.name} closed in ${getCurrentSeason().name}.`); playTone(180, 0.15, 'sawtooth', 0.05); return; }
+      const caught = state.seasonCaught[item.id] || 0;
+      if (caught >= getTotalQuota(item.id)) { setStatus(`${item.name} quota full!`); playTone(180, 0.15, 'sawtooth', 0.05); return; }
+      if (state.fuel < weather.fuelCost) { setStatus(`Out of fuel! Tap Fill or watch an ad.`); playTone(180, 0.15, 'sawtooth', 0.05); return; }
+      if (state.cash < item.cost) { setStatus(`Need $${item.cost} for ${item.gearName}.`); playTone(180, 0.15, 'sawtooth', 0.05); return; }
+
+      const durationMs = getAdjustedDurationMs(item.id);
+      state.cash -= item.cost;
+      state.fuel -= weather.fuelCost;
+      state.seasonCaught[item.id] = caught + 1;
+      const now = Date.now();
+      plot.status = 'fishing';
+      plot.speciesId = item.id;
+      plot.startedAt = now;
+      plot.endsAt = now + durationMs;
+
+      if (state.tutorialStep === 0) state.tutorialStep = 1;
+      buzz(); playTone(320, 0.12, 'triangle');
+      if (e) spawnFloatingText(`-$${item.cost}`, e.clientX, e.clientY, 'text-sky-700 bg-white/95 border-sky-200');
+      setStatus(`Deployed ${item.gearName} at Spot #${plotId + 1}.`);
+      saveGame(); render();
+    }
+
+    function harvestPlot(plotId, byCrew = false, e = null) {
+      const plot = state.plots[plotId];
+      if (plot.status !== 'ready') return false;
+      const boat = getCurrentBoat();
+      if (getHoldCount() >= boat.holdCapacity) {
+        if (!byCrew) { setStatus(`Hold full (${boat.holdCapacity}/${boat.holdCapacity})! Sell at Dock.`); playTone(180, 0.15, 'sawtooth', 0.05); }
+        return false;
+      }
+      const item = SPECIES[plot.speciesId];
+      state.hold[item.id] = (state.hold[item.id] || 0) + 1;
+      state.stats.totalHauled += 1;
+      state.seasonHauls = (state.seasonHauls || 0) + 1;
+      plot.status = 'empty';
+      plot.speciesId = null;
+      plot.startedAt = 0;
+      plot.endsAt = 0;
+
+      if (state.tutorialStep === 1) state.tutorialStep = 2;
+      if (!byCrew) {
+        buzz(18);
+        playTone(587, 0.12, 'sine', 0.08);
+        setTimeout(() => playTone(880, 0.14, 'sine', 0.06), 60);
+        if (e) spawnFloatingText(`+1 ${item.name}`, e.clientX, e.clientY, 'text-emerald-700 bg-emerald-50 border-emerald-300');
+        setStatus(`Hauled 1x ${item.name} (${getHoldCount()}/${boat.holdCapacity}).`);
+      } else {
+        playTone(587, 0.08, 'sine', 0.03);
+      }
+      if (state.seasonHauls >= HAULS_PER_SEASON) advanceSeason();
+      saveGame(); render();
+      return true;
+    }
+
+    function sellAllCatch(e) {
+      const procId = state.selectedProcessorId;
+      const proc = PROCESSORS[procId];
+      let totalEarned = 0;
+      let totalCount = 0;
+      let contractMsg = '';
+
+      Object.keys(state.hold).forEach((speciesId) => {
+        const count = state.hold[speciesId] || 0;
+        if (count > 0) {
+          totalEarned += count * getProcessorPrice(procId, speciesId);
+          totalCount += count;
+          if (state.contract.processorId === procId && state.contract.speciesId === speciesId) state.contract.deliveredQty += count;
+          state.hold[speciesId] = 0;
+        }
+      });
+      if (totalCount === 0) return;
+
+      state.processorRep[procId] += totalCount;
+      if (state.contract.processorId === procId && state.contract.deliveredQty >= state.contract.requiredQty) {
+        const cBonus = Math.round(state.contract.bonusCash * (state.captainsPass ? 1.2 : 1.0));
+        totalEarned += cBonus;
+        state.processorRep[procId] += state.contract.bonusRep;
+        state.pearls += 2;
+        state.stats.contractsCompleted += 1;
+        contractMsg = ` Contract done (+$${cBonus} & +2 💎)!`;
+        generateNewContract(procId);
+      }
+      if (state.tutorialStep === 2) {
+        state.tutorialStep = 3;
+        state.pearls += 5;
+        contractMsg += ' 🎓 Tutorial complete (+5 💎)!';
+      }
+      state.cash += totalEarned;
+      state.stats.totalRevenue += totalEarned;
+      state.freshness = 100;
+      buzz(22);
+      playTone(660, 0.1, 'sine');
+      setTimeout(() => playTone(990, 0.2, 'sine'), 90);
+      if (e) spawnFloatingText(`+$${totalEarned}!`, e.clientX, e.clientY, 'text-amber-800 bg-amber-100 border-amber-400');
+      setStatus(`Sold ${totalCount} catch to ${proc.name} for $${totalEarned}!${contractMsg}`);
+      saveGame(); render();
+    }
+
+    function finalizeExpeditionHaul(exp) {
+      const route = EXPEDITIONS.find((e) => e.id === exp.routeId);
+      if (!route) return;
+      const haul = {};
+      route.rewards.forEach((r) => { haul[r.speciesId] = r.min + Math.floor(Math.random() * (r.max - r.min + 1)); });
+      let inspection = null;
+      if (Math.random() < 0.25) {
+        const primary = route.rewards[0].speciesId;
+        if (state.licenses[primary]) { state.cash += 75; inspection = { passed: true, text: '🛡️ USCG Inspection Passed (+$75)' }; }
+        else { const fine = Math.min(state.cash, 60); state.cash -= fine; inspection = { passed: false, text: `🚨 USCG Fine: Missing ${SPECIES[primary].licenseName} (-$${fine})` }; }
+      }
+      exp.status = 'returned'; exp.haul = haul; exp.inspection = inspection;
+      exp.bycatch = Math.random() < 0.35 ? (1 + Math.floor(Math.random() * 2)) : 0;
+    }
+
+    function startExpedition(routeId) {
+      const maxSlots = getMaxFleetSlots();
+      if (state.expeditions.length >= maxSlots) { setStatus(`Fleet busy (${maxSlots}/${maxSlots}).`); playTone(180, 0.15, 'sawtooth', 0.05); return; }
+      const route = EXPEDITIONS.find((e) => e.id === routeId);
+      if (!route || state.boatIndex < route.minBoatIndex) return;
+      if (state.fuel < route.fuelCost) { setStatus(`Need ${route.fuelCost} fuel.`); return; }
+      if (state.cash < route.cashCost) { setStatus(`Need $${route.cashCost}.`); return; }
+
+      const durationMs = getExpeditionDurationMs(route);
+      state.cash -= route.cashCost;
+      state.fuel -= route.fuelCost;
+      const now = Date.now();
+      state.expeditions.push({ uid: `${now}_${Math.random().toString(36).slice(2, 6)}`, status: 'at_sea', routeId: route.id, startedAt: now, endsAt: now + durationMs, haul: null });
+      buzz(); playTone(320, 0.15, 'triangle');
+      setStatus(`Dispatched ${route.name} (${formatDurationShort(durationMs)}).`);
+      saveGame(); render();
+    }
+
+    function getInstantReturnCost(route) { return 5 + ((route ? route.minBoatIndex : 0) * 5); }
+    function instantReturnExpedition(uid) {
+      const exp = state.expeditions.find((e) => e.uid === uid);
+      if (!exp || exp.status !== 'at_sea') return;
+      const pearlCost = getInstantReturnCost(EXPEDITIONS.find((e) => e.id === exp.routeId));
+      if (state.pearls < pearlCost) { setStatus(`Need ${pearlCost} 💎 Pearls!`); playTone(180, 0.15, 'sawtooth', 0.05); return; }
+      state.pearls -= pearlCost;
+      finalizeExpeditionHaul(exp);
+      buzz(); playTone(659, 0.12, 'sine');
+      setStatus(`Used ${pearlCost} 💎 to bring vessel home!`);
+      saveGame(); render();
+    }
+
+    function releaseBycatchAndCollect(uid) {
+      const exp = state.expeditions.find((e) => e.uid === uid);
+      if (!exp || exp.status !== 'returned') return;
+      exp.bycatch = 0;
+      state.processorRep[state.selectedProcessorId] = (state.processorRep[state.selectedProcessorId] || 0) + 2;
+      collectExpedition(uid, 'Released bycatch (+2 rep). ');
+    }
+
+    function collectExpedition(uid, prefixMsg = '') {
+      const idx = state.expeditions.findIndex((e) => e.uid === uid);
+      if (idx === -1) return;
+      const exp = state.expeditions[idx];
+      if (exp.status !== 'returned' || !exp.haul) return;
+      const boat = getCurrentBoat();
+      const totalIncoming = Object.values(exp.haul).reduce((sum, q) => sum + q, 0);
+      const freeSpace = boat.holdCapacity - getHoldCount();
+      if (freeSpace < totalIncoming) { setStatus(`Need ${totalIncoming} free hold slots (${freeSpace} free).`); playTone(180, 0.15, 'sawtooth', 0.05); return; }
+      let bycatchNote = '';
+      if (exp.bycatch > 0 && Math.random() < 0.5) { const fine = Math.min(state.cash, 50); state.cash -= fine; bycatchNote = ` ⚠️ Fined $${fine}!`; }
+      Object.entries(exp.haul).forEach(([speciesId, qty]) => { state.hold[speciesId] = (state.hold[speciesId] || 0) + qty; state.stats.totalHauled += qty; });
+      state.expeditions.splice(idx, 1);
+      buzz(20); playTone(587, 0.12, 'sine');
+      setStatus(`${prefixMsg}Unloaded ${totalIncoming} crates!${bycatchNote}`);
+      saveGame(); render();
+    }
+
+    let adRunning = false;
+    function checkDailyAdCap() {
+      const today = new Date().toDateString();
+      if (state.lastAdDay !== today) { state.lastAdDay = today; state.adsWatchedToday = 0; }
+      return (state.adsWatchedToday || 0) < MAX_DAILY_ADS;
+    }
+    function watchRewardedAd(rewardType) {
+      if (adRunning) return;
+      if (!checkDailyAdCap()) { setStatus(`Daily ad limit reached (${MAX_DAILY_ADS}/${MAX_DAILY_ADS}).`); playTone(180, 0.15, 'sawtooth', 0.05); return; }
+      adRunning = true;
+      const modal = document.getElementById('ad-modal');
+      const desc = document.getElementById('ad-modal-desc');
+      const bar = document.getElementById('ad-progress-bar');
+      modal.classList.remove('hidden'); modal.classList.add('flex'); bar.style.width = '0%';
+      let step = 0;
+      const timer = setInterval(() => {
+        step += 1; bar.style.width = `${step * 33.3}%`;
+        desc.textContent = `Reward unlocks in ${Math.max(0, 3 - step)}s...`;
+        if (step >= 3) {
+          clearInterval(timer); modal.classList.add('hidden'); modal.classList.remove('flex'); adRunning = false;
+          if (rewardType === 'refill') { state.fuel = getCurrentBoat().fuelCapacity; state.ice = ICE_MAX_CAPACITY; setStatus('🎬 Fuel & Ice refilled!'); }
+          else if (rewardType === 'speedup') {
+            const now = Date.now();
+            state.expeditions.forEach((exp) => { if (exp.status === 'at_sea') exp.endsAt = now + Math.round(Math.max(0, exp.endsAt - now) * 0.5); });
+            setStatus('🎬 Active fleet trip times cut by 50%!');
+          } else if (rewardType === 'pearls') { state.pearls += 1; setStatus('🎬 +1 Harbor Pearl 💎!'); }
+          state.adsWatchedToday = (state.adsWatchedToday || 0) + 1;
+          buzz(); playTone(784, 0.15, 'sine');
+          saveGame(); render();
+        }
+      }, 900);
+    }
+
+    function buyStarterPack() {
+      if (state.starterPackOwned) return;
+      state.starterPackOwned = true; state.pearls += 25;
+      buzz(20); playTone(659, 0.1, 'sine');
+      setStatus('🎁 Starter Pack claimed: +25 💎 & +2 Hold Slots!');
+      saveGame(); render();
+    }
+
+    function toggleCaptainsPass() {
+      state.captainsPass = !state.captainsPass;
+      buzz(); playTone(784, 0.14, 'sine');
+      setStatus(state.captainsPass ? "👑 Captain's Pass active!" : "Captain's Pass deactivated.");
+      saveGame(); render();
+    }
+
+    function confirmReset() {
+      state = createInitialState();
+      try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+      document.getElementById('reset-modal').classList.add('hidden');
+      document.getElementById('reset-modal').classList.remove('flex');
+      switchTab('grounds');
+      setStatus('Started a fresh fishing career!');
+      render();
+    }
+
+    // ==========================================
+    // 5. RENDERING (Including Live Harbor Scene)
+    // ==========================================
+    function checkAchievements() {
+      if (!state.achievements) state.achievements = {};
+      let unlocked = null;
+      ACHIEVEMENTS.forEach((ach) => {
+        if (!state.achievements[ach.id] && ach.check(state)) { state.achievements[ach.id] = true; state.cash += ach.reward; unlocked = ach; }
+      });
+      if (unlocked) {
+        playTone(659, 0.1, 'sine'); setTimeout(() => playTone(1046, 0.18, 'sine'), 120);
+        setStatus(`🏆 Achievement: ${unlocked.name} (+$${unlocked.reward})!`);
+        saveGame();
+      }
+    }
+
+    function renderHarborScene() {
+      const container = document.getElementById('harbor-scene');
+      if (!container) return;
+      const w = getCurrentWeather();
+      const skyFill = w.id === 'calm' ? '#38bdf8' : (w.id === 'choppy' ? '#64748b' : '#334155');
+      const waterFill = w.id === 'calm' ? '#0284c7' : (w.id === 'choppy' ? '#0369a1' : '#1e3a5f');
+
+      let boatSvg = '';
+      if (state.boatIndex === 0) {
+        // Small Skiff
+        boatSvg = `<g class="bobbing"><path d="M185 88 L265 88 L252 104 L198 104 Z" fill="#b45309" stroke="#78350f" stroke-width="2"/><rect x="214" y="76" width="22" height="12" rx="2" fill="#fef3c7" stroke="#92400e" stroke-width="1.5"/></g>`;
+      } else if (state.boatIndex === 1) {
+        // Bay Trawler
+        boatSvg = `<g class="bobbing"><path d="M165 84 L285 84 L268 106 L180 106 Z" fill="#f8fafc" stroke="#1e293b" stroke-width="2"/><rect x="190" y="60" width="44" height="24" rx="3" fill="#e2e8f0" stroke="#334155" stroke-width="2"/><rect x="198" y="66" width="12" height="9" fill="#38bdf8"/><path d="M245 84 L258 46 L272 84" fill="none" stroke="#ea580c" stroke-width="3" stroke-linecap="round"/></g>`;
+      } else {
+        // Offshore Seine
+        boatSvg = `<g class="bobbing"><path d="M145 80 L305 80 L286 108 L162 108 Z" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/><path d="M150 86 L300 86" stroke="#ef4444" stroke-width="3"/><rect x="175" y="50" width="58" height="30" rx="3" fill="#f8fafc" stroke="#1e293b" stroke-width="2"/><rect x="184" y="57" width="18" height="10" fill="#38bdf8"/><line x1="204" y1="50" x2="204" y2="30" stroke="#94a3b8" stroke-width="2.5"/><path d="M250 80 L268 38 L286 80" fill="none" stroke="#f59e0b" stroke-width="3.5"/></g>`;
+      }
+
+      const crewSvg = state.crewCount > 0
+        ? Array.from({ length: state.crewCount }, (_, i) => `<circle cx="${35 + i * 18}" cy="76" r="4.5" fill="#fbbf24" stroke="#0f172a" stroke-width="1.2"/><rect x="${31 + i * 18}" y="81" width="8" height="10" rx="2" fill="#0284c7"/>`).join('')
+        : '';
+
+      const sunOrStorm = w.id === 'calm'
+        ? `<circle cx="385" cy="28" r="14" fill="#fde047" opacity="0.95"/>`
+        : `<ellipse cx="370" cy="26" rx="26" ry="11" fill="#cbd5e1" opacity="0.8"/><ellipse cx="395" cy="30" rx="20" ry="9" fill="#94a3b8" opacity="0.85"/>`;
+
+      container.innerHTML = `
+        <svg viewBox="0 0 440 120" width="100%" class="block" role="img" aria-label="Animated harbor scene">
+          <rect width="440" height="86" fill="${skyFill}" />
+          ${sunOrStorm}
+          <!-- Distant Coastal Hills -->
+          <path d="M0 86 Q70 50 150 78 T310 72 T440 86 Z" fill="#0f766e" opacity="0.45"/>
+          <!-- Wooden Dock Pier -->
+          <rect x="0" y="88" width="92" height="10" fill="#92400e"/>
+          <rect x="12" y="96" width="8" height="24" fill="#78350f"/>
+          <rect x="68" y="96" width="8" height="24" fill="#78350f"/>
+          ${crewSvg}
+          <!-- Water & Waves -->
+          <rect y="86" width="440" height="34" fill="${waterFill}" />
+          ${boatSvg}
+          <path class="wave-anim" d="M-20 104 Q10 98 40 104 T100 104 T160 104 T220 104 T280 104 T340 104 T400 104 T460 104" fill="none" stroke="#bae6fd" stroke-width="2" opacity="0.7"/>
+        </svg>
+      `;
+    }
+
+    function renderHeader() {
+      const season = getCurrentSeason();
+      const boat = getCurrentBoat();
+      const weather = getCurrentWeather();
+      document.getElementById('boat-subtitle').textContent = `${boat.icon} ${boat.name} • ${boat.spots} Spots • Hold ${boat.holdCapacity} • ${boat.speedMultiplier}x`;
+      document.getElementById('pass-badge').classList.toggle('hidden', !state.captainsPass);
+      document.getElementById('cash-display').textContent = `$${state.cash.toLocaleString()}`;
+      document.getElementById('pearls-display').textContent = `💎 ${state.pearls}`;
+      document.getElementById('weather-display').textContent = `${weather.icon} ${weather.short}`;
+      document.getElementById('weather-effect-note').textContent = weather.note;
+      document.getElementById('season-display').textContent = `${season.icon} ${season.short} Y${state.year}`;
+      document.getElementById('fuel-display').textContent = `⛽ ${state.fuel}/${boat.fuelCapacity}`;
+      document.getElementById('ice-display').textContent = `🧊 ${state.ice}/${ICE_MAX_CAPACITY}`;
+
+      const refuelBtn = document.getElementById('refuel-btn');
+      const fNeed = boat.fuelCapacity - state.fuel;
+      refuelBtn.disabled = fNeed <= 0 || state.cash < FUEL_PRICE_PER_UNIT;
+      refuelBtn.textContent = fNeed > 0 ? `$${fNeed * FUEL_PRICE_PER_UNIT}` : 'Full';
+
+      const iceBtn = document.getElementById('buy-ice-btn');
+      const iNeed = ICE_MAX_CAPACITY - state.ice;
+      iceBtn.disabled = iNeed <= 0 || state.cash < ICE_PRICE_PER_UNIT;
+      iceBtn.textContent = iNeed > 0 ? `$${iNeed * ICE_PRICE_PER_UNIT}` : 'Full';
+
+      document.getElementById('sound-toggle').textContent = state.soundEnabled ? '🔊' : '🔇';
+      document.getElementById('nav-hold-dot').classList.toggle('hidden', getHoldCount() === 0);
+
+      const passBtn = document.getElementById('iap-pass-btn');
+      if (passBtn) passBtn.textContent = state.captainsPass ? 'Active ✓' : '$4.99/mo';
+      const starterBtn = document.getElementById('iap-starter-btn');
+      if (starterBtn) { starterBtn.disabled = !!state.starterPackOwned; starterBtn.textContent = state.starterPackOwned ? 'Owned ✓' : '$1.99'; }
+      const seasonBadge = document.getElementById('season-progress-badge');
+      if (seasonBadge) seasonBadge.textContent = `${state.seasonHauls || 0}/${HAULS_PER_SEASON} Hauls`;
+      const nextSeasonBtn = document.getElementById('next-season-btn');
+      if (nextSeasonBtn) nextSeasonBtn.classList.toggle('hidden', !DEV_MODE);
+      const devTimerSection = document.getElementById('dev-timer-section');
+      if (devTimerSection) devTimerSection.classList.toggle('hidden', !DEV_MODE);
+      const idleBtn = document.getElementById('idle-mode-btn');
+      if (idleBtn) idleBtn.textContent = state.idleMode ? 'Idle (15m–6h)' : 'Demo (25s–75s)';
+      const adCapNote = document.getElementById('ad-cap-note');
+      if (adCapNote) adCapNote.textContent = `Daily rewarded ads remaining: ${Math.max(0, MAX_DAILY_ADS - (state.adsWatchedToday || 0))} / ${MAX_DAILY_ADS}`;
+
+      const tutBanner = document.getElementById('tutorial-banner');
+      const tutText = document.getElementById('tutorial-text');
+      if (tutBanner && tutText) {
+        if (state.tutorialStep >= 3) tutBanner.classList.add('hidden');
+        else {
+          tutBanner.classList.remove('hidden');
+          if (state.tutorialStep === 0) tutText.textContent = 'Step 1/3: Tap any open water spot below to deploy your Clam Rake.';
+          else if (state.tutorialStep === 1) tutText.textContent = 'Step 2/3: Wait for the green glow, then tap to haul your catch!';
+          else if (state.tutorialStep === 2) tutText.textContent = 'Step 3/3: Tap the Dock tab below and sell your catch (+5 💎 bonus)!';
+        }
+      }
+    }
+
+    function renderGearList() {
+      const container = document.getElementById('gear-list');
+      container.innerHTML = '';
+
+      Object.values(SPECIES).forEach((item) => {
+        const isSelected = state.selectedSpeciesId === item.id;
+        const boatUnlocked = state.boatIndex >= (item.minBoatIndex || 0);
+        const hasLicense = !!state.licenses[item.id];
+        const inSeason = isSpeciesInSeason(item.id);
+        const timeStr = formatDurationShort(getAdjustedDurationMs(item.id));
+        const currentSell = getProcessorPrice(state.selectedProcessorId, item.id);
+        const caught = state.seasonCaught[item.id] || 0;
+        const totalQuota = getTotalQuota(item.id);
+
+        const card = document.createElement('div');
+        card.className = `p-3 rounded-xl border transition ${
+          isSelected ? 'bg-sky-50 border-sky-400 ring-1 ring-sky-400 shadow-sm' : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+        }`;
+
+        const selectBtn = document.createElement('button');
+        selectBtn.type = 'button';
+        selectBtn.className = 'w-full text-left flex items-center justify-between cursor-pointer active:scale-[0.99] transition';
+        selectBtn.innerHTML = `
+          <div class="flex items-center gap-2.5 min-w-0">
+            ${SPECIES_SVG[item.id] || ''}
+            <div class="min-w-0">
+              <div class="font-bold text-sm text-slate-900 flex items-center gap-1.5">
+                <span class="truncate">${item.gearName}</span>
+                <span class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                  inSeason ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-700'
+                }">${inSeason ? 'Open' : 'Closed'}</span>
+              </div>
+              <div class="text-xs text-slate-500">${item.name} &bull; ${timeStr}</div>
+            </div>
+          </div>
+          <div class="text-right shrink-0 ml-2">
+            <div class="text-xs font-bold text-rose-600">-$${item.cost}</div>
+            <div class="text-xs font-bold text-emerald-700">+$${currentSell}</div>
+          </div>
+        `;
+        selectBtn.addEventListener('click', () => {
+          state.selectedSpeciesId = item.id;
+          buzz(10); playTone(440, 0.06, 'sine', 0.04);
+          saveGame(); renderGearList();
+        });
+        card.appendChild(selectBtn);
+
+        // Decluttered: show secondary quota/season/lease details only when selected or locked
+        if (!boatUnlocked || !hasLicense || isSelected) {
+          const metaRow = document.createElement('div');
+          metaRow.className = 'mt-2 pt-2 border-t border-slate-200 flex items-center justify-between text-xs gap-1.5 flex-wrap';
+          if (!boatUnlocked) {
+            metaRow.innerHTML = `<span class="text-indigo-700 font-semibold">🚤 Needs ${BOATS[item.minBoatIndex].name}</span>`;
+          } else if (hasLicense) {
+            metaRow.innerHTML = `<span class="font-semibold ${caught >= totalQuota ? 'text-rose-600' : 'text-slate-600'}">${item.seasonLabel} &bull; Quota ${caught}/${totalQuota}</span>`;
+            const btns = document.createElement('div');
+            btns.className = 'flex items-center gap-1';
+            const cashLeaseBtn = document.createElement('button');
+            cashLeaseBtn.type = 'button';
+            cashLeaseBtn.className = 'px-2 py-0.5 rounded bg-sky-100 hover:bg-sky-200 text-sky-800 font-bold text-[11px] cursor-pointer';
+            cashLeaseBtn.textContent = `+10 ($${item.quotaLeaseCost})`;
+            cashLeaseBtn.addEventListener('click', (e) => { e.stopPropagation(); buyExtraQuota(item.id, false); });
+            const pearlLeaseBtn = document.createElement('button');
+            pearlLeaseBtn.type = 'button';
+            pearlLeaseBtn.className = 'px-2 py-0.5 rounded bg-fuchsia-100 hover:bg-fuchsia-200 text-fuchsia-800 font-bold text-[11px] cursor-pointer';
+            pearlLeaseBtn.textContent = '+10 (2💎)';
+            pearlLeaseBtn.addEventListener('click', (e) => { e.stopPropagation(); buyExtraQuota(item.id, true); });
+            btns.appendChild(cashLeaseBtn);
+            btns.appendChild(pearlLeaseBtn);
+            metaRow.appendChild(btns);
+          } else {
+            metaRow.innerHTML = `<span class="text-amber-800 font-semibold">🔒 ${item.licenseName}</span>`;
+            const buyBtn = document.createElement('button');
+            buyBtn.type = 'button';
+            buyBtn.className = `px-2.5 py-1 rounded-lg font-bold cursor-pointer ${
+              state.cash >= item.licenseCost ? 'bg-amber-400 hover:bg-amber-300 text-slate-950' : 'bg-slate-200 text-slate-500'
+            }`;
+            buyBtn.textContent = `Buy ($${item.licenseCost})`;
+            buyBtn.addEventListener('click', (e) => { e.stopPropagation(); buyLicense(item.id); });
+            metaRow.appendChild(buyBtn);
+          }
+          card.appendChild(metaRow);
+        }
+
+        container.appendChild(card);
+      });
+    }
+
+    function renderGrid() {
+      const grid = document.getElementById('ocean-grid');
+      grid.innerHTML = '';
+      const now = Date.now();
+
+      state.plots.forEach((plot) => {
+        const card = document.createElement('button');
+        card.type = 'button';
+
+        if (plot.status === 'empty') {
+          card.className = 'water-tile rounded-2xl p-3 h-28 flex flex-col items-center justify-center gap-1 transition active:scale-95 cursor-pointer';
+          card.innerHTML = `
+            <span class="text-xl text-sky-100 opacity-85">🌊</span>
+            <span class="text-xs font-bold text-white">Spot #${plot.id + 1}</span>
+            <span class="text-[11px] text-sky-100/90">Tap to deploy</span>
+          `;
+          card.addEventListener('click', (e) => deployGear(plot.id, e));
+        } else if (plot.status === 'fishing') {
+          const item = SPECIES[plot.speciesId];
+          const pct = Math.min(100, Math.max(0, Math.round(((now - plot.startedAt) / Math.max(1, plot.endsAt - plot.startedAt)) * 100)));
+          const secsLeft = Math.max(0, Math.ceil((plot.endsAt - now) / 1000));
+          card.className = 'water-tile rounded-2xl p-3 h-28 flex flex-col items-center justify-between cursor-default';
+          card.innerHTML = `
+            <span class="text-[11px] font-bold text-sky-100">Spot #${plot.id + 1}</span>
+            <div class="bobbing">${SPECIES_SVG[item.id] || ''}</div>
+            <div class="w-full">
+              <div class="flex justify-between text-[11px] font-semibold text-white mb-1"><span class="truncate">${item.name}</span><span>${formatDurationShort(secsLeft * 1000)}</span></div>
+              <div class="w-full h-2 bg-sky-950/50 rounded-full overflow-hidden"><div class="h-full bg-amber-300" style="width: ${pct}%"></div></div>
+            </div>
+          `;
+        } else if (plot.status === 'ready') {
+          const item = SPECIES[plot.speciesId];
+          card.className = 'water-tile-ready rounded-2xl p-3 h-28 flex flex-col items-center justify-center gap-1 transition active:scale-95 cursor-pointer';
+          card.innerHTML = `
+            <div class="bobbing">${SPECIES_SVG[item.id] || ''}</div>
+            <span class="text-xs font-extrabold text-white">${item.name}</span>
+            <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-white text-emerald-800 shadow-sm">Tap to Haul</span>
+          `;
+          card.addEventListener('click', (e) => harvestPlot(plot.id, false, e));
+        }
+        grid.appendChild(card);
+      });
+    }
+
+    function renderExpeditions() {
+      const panel = document.getElementById('expedition-panel');
+      const badge = document.getElementById('fleet-slots-badge');
+      const maxSlots = getMaxFleetSlots();
+      const activeCount = state.expeditions.length;
+      if (badge) badge.textContent = `${activeCount} / ${maxSlots} Boats at Sea`;
+      const now = Date.now();
+      panel.innerHTML = '';
+
+      if (activeCount > 0) {
+        const list = document.createElement('div');
+        list.className = 'space-y-2.5 mb-4';
+        state.expeditions.forEach((exp) => {
+          const route = EXPEDITIONS.find((e) => e.id === exp.routeId) || EXPEDITIONS[0];
+          const item = document.createElement('div');
+          if (exp.status === 'at_sea') {
+            const pct = Math.min(100, Math.max(0, Math.round(((now - exp.startedAt) / Math.max(1, exp.endsAt - exp.startedAt)) * 100)));
+            const secsLeft = Math.max(0, Math.ceil((exp.endsAt - now) / 1000));
+            item.className = 'bg-sky-50 border border-sky-200 rounded-xl p-3.5';
+            item.innerHTML = `
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2"><span class="text-xl bobbing">${route.icon}</span><div><div class="font-bold text-xs sm:text-sm text-slate-900">${route.name}</div><div class="text-[11px] text-slate-600">${formatDurationShort(secsLeft * 1000)} remaining</div></div></div>
+              </div>
+              <div class="w-full h-2 bg-slate-200 rounded-full overflow-hidden mb-2"><div class="h-full bg-sky-500" style="width: ${pct}%"></div></div>
+            `;
+            const instantBtn = document.createElement('button');
+            instantBtn.type = 'button';
+            instantBtn.className = 'px-2.5 py-1 rounded-lg bg-fuchsia-100 hover:bg-fuchsia-200 border border-fuchsia-300 text-fuchsia-800 text-xs font-bold cursor-pointer';
+            instantBtn.textContent = `Instant Return (${getInstantReturnCost(route)} 💎)`;
+            instantBtn.addEventListener('click', () => instantReturnExpedition(exp.uid));
+            item.appendChild(instantBtn);
+          } else if (exp.status === 'returned' && exp.haul) {
+            const summaryParts = Object.entries(exp.haul).map(([id, qty]) => `${qty}x ${SPECIES[id].name}`);
+            item.className = 'bg-emerald-50 border border-emerald-300 rounded-xl p-3.5 flex flex-col gap-2';
+            item.innerHTML = `<div><div class="text-xs font-bold uppercase text-emerald-700">${route.icon} ${route.name} Returned!</div><div class="text-xs sm:text-sm font-semibold text-slate-900 mt-0.5">${summaryParts.join(' &bull; ')}</div></div>`;
+            const btns = document.createElement('div');
+            btns.className = 'flex flex-wrap gap-2';
+            if (exp.bycatch > 0) {
+              const relBtn = document.createElement('button');
+              relBtn.type = 'button';
+              relBtn.className = 'px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold cursor-pointer';
+              relBtn.textContent = `Release ${exp.bycatch}x Bycatch (+2 Rep)`;
+              relBtn.addEventListener('click', () => releaseBycatchAndCollect(exp.uid));
+              btns.appendChild(relBtn);
+            }
+            const colBtn = document.createElement('button');
+            colBtn.type = 'button';
+            colBtn.className = 'px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold cursor-pointer';
+            colBtn.textContent = exp.bycatch > 0 ? 'Keep & Unload (Risk $50)' : 'Unload Catch';
+            colBtn.addEventListener('click', () => collectExpedition(exp.uid));
+            btns.appendChild(colBtn);
+            item.appendChild(btns);
+            if (exp.inspection) {
+              const insp = document.createElement('div');
+              insp.className = `text-xs font-semibold px-2.5 py-1 rounded-lg ${exp.inspection.passed ? 'bg-sky-100 text-sky-800' : 'bg-rose-100 text-rose-800'}`;
+              insp.textContent = exp.inspection.text;
+              item.appendChild(insp);
+            }
+          }
+          list.appendChild(item);
+        });
+        panel.appendChild(list);
+      }
+
+      const grid = document.createElement('div');
+      grid.className = 'grid grid-cols-1 sm:grid-cols-3 gap-3';
+      const slotsFull = activeCount >= maxSlots;
+      EXPEDITIONS.forEach((route) => {
+        const unlocked = state.boatIndex >= route.minBoatIndex;
+        const canAfford = state.cash >= route.cashCost && state.fuel >= route.fuelCost;
+        const card = document.createElement('div');
+        card.className = 'bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col justify-between gap-2';
+        card.innerHTML = `
+          <div>
+            <div class="font-bold text-sm text-slate-900">${route.icon} ${route.name}</div>
+            <div class="text-[11px] text-slate-600 mt-1">${route.summary}</div>
+            <div class="text-[11px] text-sky-700 font-semibold mt-1">⏱️ ${formatDurationShort(getExpeditionDurationMs(route))} &bull; ⛽ ${route.fuelCost} &bull; $${route.cashCost}</div>
+          </div>
+        `;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        if (!unlocked) { btn.disabled = true; btn.className = 'w-full py-2 rounded-lg bg-slate-200 text-slate-500 text-xs font-semibold'; btn.textContent = `Needs ${BOATS[route.minBoatIndex].name}`; }
+        else if (slotsFull) { btn.disabled = true; btn.className = 'w-full py-2 rounded-lg bg-slate-200 text-slate-500 text-xs font-semibold'; btn.textContent = 'Fleet Busy'; }
+        else { btn.className = `w-full py-2 rounded-lg text-xs font-bold active:scale-95 cursor-pointer ${canAfford ? 'bg-sky-600 hover:bg-sky-500 text-white' : 'bg-slate-200 text-slate-500'}`; btn.textContent = 'Dispatch Trip'; btn.addEventListener('click', () => startExpedition(route.id)); }
+        card.appendChild(btn);
+        grid.appendChild(card);
+      });
+      panel.appendChild(grid);
+    }
+
+    function renderProcessors() {
+      const list = document.getElementById('processor-list');
+      list.innerHTML = '';
+      Object.values(PROCESSORS).forEach((proc) => {
+        const isSelected = state.selectedProcessorId === proc.id;
+        const rep = state.processorRep[proc.id];
+        const tier = getProcessorTier(proc.id);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `text-left p-3 rounded-xl border transition cursor-pointer ${
+          isSelected ? 'bg-teal-50 border-teal-500 ring-1 ring-teal-500' : 'bg-slate-50 border-slate-200'
+        }`;
+        btn.innerHTML = `
+          <div class="font-bold text-sm text-slate-900">${proc.icon} ${proc.name}</div>
+          <p class="text-[11px] text-slate-600 mt-1">${proc.specialtyText}</p>
+          <div class="mt-2 pt-2 border-t border-slate-200 flex justify-between text-[11px]">
+            <span class="text-teal-700 font-bold">Tier ${tier} (+${tier * 5}%)</span>
+            <span class="text-slate-500">${rep} rep</span>
+          </div>
+        `;
+        btn.addEventListener('click', () => selectProcessor(proc.id));
+        list.appendChild(btn);
+      });
+
+      const c = state.contract;
+      const sp = SPECIES[c.speciesId];
+      const proc = PROCESSORS[c.processorId];
+      const pct = Math.min(100, Math.round((c.deliveredQty / c.requiredQty) * 100));
+      document.getElementById('contract-box').innerHTML = `
+        <div class="flex items-center gap-3">
+          ${SPECIES_SVG[sp.id] || ''}
+          <div>
+            <div class="text-xs font-bold uppercase text-teal-700">Contract &bull; ${proc.name}</div>
+            <div class="text-sm font-bold text-slate-900">Deliver ${c.requiredQty}x ${sp.name} (${c.deliveredQty}/${c.requiredQty})</div>
+          </div>
+        </div>
+        <div class="text-right">
+          <div class="text-xs font-bold text-emerald-700">+$${c.bonusCash} &amp; +2 💎</div>
+          <div class="w-24 h-1.5 bg-teal-200 rounded-full overflow-hidden mt-1 ml-auto"><div class="h-full bg-teal-600" style="width: ${pct}%"></div></div>
+        </div>
+      `;
+    }
+
+    function renderHold() {
+      const holdList = document.getElementById('hold-list');
+      holdList.innerHTML = '';
+      const boat = getCurrentBoat();
+      const procId = state.selectedProcessorId;
+      let totalValue = 0;
+      let totalItems = 0;
+
+      Object.values(SPECIES).forEach((item) => {
+        const qty = state.hold[item.id] || 0;
+        const unitPrice = getProcessorPrice(procId, item.id);
+        totalItems += qty;
+        totalValue += qty * unitPrice;
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2 border border-slate-200';
+        row.innerHTML = `
+          <div class="flex items-center gap-2">${SPECIES_SVG[item.id] || ''}<span class="text-slate-800 font-medium">${item.name}</span><span class="text-[11px] text-slate-500">($${unitPrice})</span></div>
+          <div class="font-bold ${qty > 0 ? 'text-amber-700' : 'text-slate-400'}">x${qty}</div>
+        `;
+        holdList.appendChild(row);
+      });
+
+      document.getElementById('hold-capacity-badge').textContent = `${totalItems} / ${boat.holdCapacity}`;
+      document.getElementById('hold-value-badge').textContent = `$${totalValue}`;
+      const f = state.freshness;
+      const fBadge = document.getElementById('freshness-badge');
+      if (f >= 90) { fBadge.textContent = `${f}% (Grade A+ • +15%)`; fBadge.className = 'font-bold text-emerald-700'; }
+      else if (f >= 70) { fBadge.textContent = `${f}% (Standard • 1.0x)`; fBadge.className = 'font-bold text-amber-700'; }
+      else { fBadge.textContent = `${f}% (Aged • -20%)`; fBadge.className = 'font-bold text-rose-700'; }
+
+      document.getElementById('selling-to-label').innerHTML = `Selling to: <span class="font-bold text-teal-700">${PROCESSORS[procId].name}</span>`;
+      const sellBtn = document.getElementById('sell-all-btn');
+      sellBtn.disabled = totalItems === 0;
+      sellBtn.textContent = `Sell Catch at Dock ($${totalValue})`;
+    }
+
+    function renderShipyard() {
+      const panel = document.getElementById('shipyard-panel');
+      const current = getCurrentBoat();
+      const next = BOATS[state.boatIndex + 1];
+      if (!next) { panel.innerHTML = `<div class="bg-indigo-50 border border-indigo-200 rounded-xl p-3 text-xs text-indigo-800 font-bold">${current.icon} ${current.name} (Max Fleet Tier)</div>`; return; }
+      panel.innerHTML = `
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-2.5 text-xs">
+          <div class="font-bold text-sm text-slate-900 flex justify-between"><span>${next.icon} ${next.name}</span><span class="text-indigo-700">$${next.cost.toLocaleString()}</span></div>
+          <div class="text-slate-600 mt-1">🌊 ${next.spots} Spots &bull; 📦 ${next.holdCapacity} &bull; ⛽ ${next.fuelCapacity} &bull; ⚡ ${next.speedMultiplier}x</div>
+        </div>
+      `;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `w-full py-2.5 rounded-xl font-bold text-sm active:scale-95 cursor-pointer ${state.cash >= next.cost ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : 'bg-slate-200 text-slate-500'}`;
+      btn.textContent = `Upgrade ($${next.cost.toLocaleString()})`;
+      btn.addEventListener('click', upgradeBoat);
+      panel.appendChild(btn);
+    }
+
+    function renderCrew() {
+      document.getElementById('crew-count-badge').textContent = `${state.crewCount} / ${CREW_COSTS.length} Hired`;
+      const panel = document.getElementById('crew-panel');
+      panel.innerHTML = '';
+      if (state.crewCount >= CREW_COSTS.length) { panel.innerHTML = `<div class="bg-cyan-50 border border-cyan-200 rounded-xl p-3 text-xs text-cyan-800 font-bold text-center">✓ Full Crew Active</div>`; return; }
+      const nextCost = CREW_COSTS[state.crewCount];
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `w-full py-2.5 rounded-xl font-bold text-sm active:scale-95 cursor-pointer ${state.cash >= nextCost ? 'bg-cyan-600 hover:bg-cyan-500 text-white' : 'bg-slate-200 text-slate-500'}`;
+      btn.textContent = `Hire Deckhand #${state.crewCount + 1} ($${nextCost})`;
+      btn.addEventListener('click', hireCrew);
+      panel.appendChild(btn);
+    }
+
+    function renderStats() {
+      const s = state.stats || { totalHauled: 0, totalRevenue: 0, contractsCompleted: 0 };
+      document.getElementById('stat-hauled').textContent = s.totalHauled.toLocaleString();
+      document.getElementById('stat-revenue').textContent = `$${s.totalRevenue.toLocaleString()}`;
+      document.getElementById('stat-contracts').textContent = s.contractsCompleted.toLocaleString();
+    }
+
+    function renderAchievements() {
+      const grid = document.getElementById('achievements-grid');
+      const badge = document.getElementById('achievements-badge');
+      const unlockedMap = state.achievements || {};
+      badge.textContent = `${ACHIEVEMENTS.filter((a) => unlockedMap[a.id]).length} / ${ACHIEVEMENTS.length} Unlocked`;
+      grid.innerHTML = '';
+      ACHIEVEMENTS.forEach((ach) => {
+        const unlocked = !!unlockedMap[ach.id];
+        const card = document.createElement('div');
+        card.className = `p-3 rounded-xl border flex items-center justify-between gap-2 ${unlocked ? 'bg-amber-50 border-amber-300' : 'bg-slate-50 border-slate-200 opacity-75'}`;
+        card.innerHTML = `
+          <div class="flex items-center gap-2"><span class="text-xl ${unlocked ? '' : 'grayscale opacity-50'}">${ach.icon}</span><div><div class="font-bold text-xs ${unlocked ? 'text-amber-950' : 'text-slate-700'}">${ach.name}</div><div class="text-[11px] text-slate-500">${ach.desc}</div></div></div>
+          <span class="text-xs font-bold ${unlocked ? 'text-emerald-700' : 'text-slate-500'}">${unlocked ? '✓' : `+$${ach.reward}`}</span>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function render() {
+      checkAchievements();
+      renderHeader();
+      renderHarborScene();
+      renderGearList();
+      renderGrid();
+      renderExpeditions();
+      renderProcessors();
+      renderHold();
+      renderShipyard();
+      renderCrew();
+      renderStats();
+      renderAchievements();
+    }
+
+    // ==========================================
+    // 6. GAME LOOPS
+    // ==========================================
+    function tick() {
+      const now = Date.now();
+      let gridDirty = false;
+      state.plots.forEach((plot) => {
+        if (plot.status === 'fishing') {
+          if (now >= plot.endsAt) { plot.status = 'ready'; playTone(523, 0.08, 'sine', 0.05); saveGame(); }
+          gridDirty = true;
+        }
+      });
+
+      let expDirty = false;
+      state.expeditions.forEach((exp) => {
+        if (exp.status === 'at_sea') {
+          if (now >= exp.endsAt) { finalizeExpeditionHaul(exp); playTone(659, 0.12, 'sine'); setStatus('Offshore vessel returned! Check Fleet tab.'); saveGame(); }
+          expDirty = true;
+        }
+      });
+
+      if (gridDirty) renderGrid();
+      if (expDirty) renderExpeditions();
+    }
+
+    // ==========================================
+    // 7. STARTUP
+    // ==========================================
+    
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    });
+  }
+
+    window.onload = () => {
+      loadGame();
+      switchTab(state.activeTab || 'grounds');
+
+      document.querySelectorAll('.nav-tab-btn').forEach((btn) => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
+      document.getElementById('refuel-btn').addEventListener('click', refuelBoat);
+      document.getElementById('buy-ice-btn').addEventListener('click', buyIce);
+      document.getElementById('next-season-btn').addEventListener('click', advanceSeason);
+      document.getElementById('sell-all-btn').addEventListener('click', (e) => sellAllCatch(e));
+      document.getElementById('sound-toggle').addEventListener('click', () => { state.soundEnabled = !state.soundEnabled; saveGame(); renderHeader(); });
+
+      document.getElementById('ad-refill-btn').addEventListener('click', () => watchRewardedAd('refill'));
+      document.getElementById('ad-speedup-btn').addEventListener('click', () => watchRewardedAd('speedup'));
+      document.getElementById('ad-pearls-btn').addEventListener('click', () => watchRewardedAd('pearls'));
+      document.getElementById('iap-starter-btn').addEventListener('click', buyStarterPack);
+      document.getElementById('iap-pass-btn').addEventListener('click', toggleCaptainsPass);
+      document.getElementById('idle-mode-btn').addEventListener('click', () => { state.idleMode = !state.idleMode; saveGame(); render(); });
+      document.getElementById('tutorial-skip-btn').addEventListener('click', () => { state.tutorialStep = 3; saveGame(); renderHeader(); });
+
+      const resetModal = document.getElementById('reset-modal');
+      document.getElementById('reset-open-btn').addEventListener('click', () => { resetModal.classList.remove('hidden'); resetModal.classList.add('flex'); });
+      document.getElementById('reset-cancel-btn').addEventListener('click', () => { resetModal.classList.add('hidden'); resetModal.classList.remove('flex'); });
+      document.getElementById('reset-confirm-btn').addEventListener('click', confirmReset);
+
+      render();
+      setInterval(tick, 250);
+      setInterval(() => {
+        if (state.crewCount <= 0) return;
+        let hauled = 0;
+        for (const plot of state.plots) { if (hauled >= state.crewCount) break; if (plot.status === 'ready' && harvestPlot(plot.id, true)) hauled += 1; }
+      }, 1500);
+      setInterval(() => rollWeather(false), 25000);
+      setInterval(() => {
+        if (getHoldCount() <= 0) return;
+        if (state.captainsPass) state.freshness = 100;
+        else if (state.ice > 0) { state.ice -= 1; state.freshness = Math.min(100, state.freshness + 5); }
+        else state.freshness = Math.max(40, state.freshness - 6);
+        saveGame(); renderHeader(); renderGearList(); renderHold();
+      }, 6000);
+    };
+  </script>
+</body>
+</html>

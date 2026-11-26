@@ -1,0 +1,6 @@
+{
+  "appId": "com.harborandhaul.game",
+  "appName": "Harbor & Haul",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}
