@@ -38,6 +38,12 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # NOTE: GitHub does not allow `secrets` in `if:` expressions — the file
+    # is rejected at parse time ("Unrecognized named-value: 'secrets'") and
+    # no job runs. So the keystore check is hoisted here into job env, and
+    # the steps below test env.HAS_KEYSTORE instead.
+    env:
+      HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
     steps:
       - name: Check out
         uses: actions/checkout@v4
@@ -113,7 +119,7 @@ jobs:
           ./gradlew :app:bundleRelease --stacktrace
 
       - name: Sign release AAB
-        if: ${{ inputs.build_type != 'apk-only' && secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        if: ${{ inputs.build_type != 'apk-only' && env.HAS_KEYSTORE == 'true' }}
         uses: r0adkll/sign-android-release@v1
         with:
           releaseDirectory: android/app/build/outputs/bundle/release
@@ -123,7 +129,7 @@ jobs:
           keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
       - name: Warn if release AAB is unsigned
-        if: ${{ inputs.build_type != 'apk-only' && secrets.ANDROID_KEYSTORE_BASE64 == '' }}
+        if: ${{ inputs.build_type != 'apk-only' && env.HAS_KEYSTORE != 'true' }}
         run: |
           {
             echo "## ⚠️ Release AAB is UNSIGNED"
