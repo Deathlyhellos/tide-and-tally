@@ -1,0 +1,16 @@
+{
+  "name": "harbor-and-haul",
+  "version": "1.0.0",
+  "description": "Harbor & Haul Commercial Fishing Tycoon (Capacitor Android Starter)",
+  "scripts": {
+    "cap:sync": "npx cap sync android",
+    "cap:open": "npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/cli": "^6.0.0"
+  }
+}
