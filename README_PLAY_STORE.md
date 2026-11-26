@@ -1,6 +1,6 @@
-# Harbor & Haul — Google Play Starter Bundle
+# Tide & Tally — Google Play Starter Bundle
 
-This folder contains your complete **Harbor & Haul (v15)** game packaged for either **Capacitor + Android Studio** (offline native `.aab`) or **PWABuilder** (web-hosted `.aab`).
+This folder contains your complete **Tide & Tally (v17)** game packaged for either **Capacitor + Android Studio** (offline native `.aab`) or **PWABuilder** (web-hosted `.aab`).
 
 ## Option A: Build an Offline Android App with Capacitor
 1. Install **Node.js** and **Android Studio** on your computer.

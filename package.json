@@ -1,7 +1,7 @@
 {
-  "name": "harbor-and-haul",
+  "name": "tide-and-tally",
   "version": "1.0.0",
-  "description": "Harbor & Haul Commercial Fishing Tycoon (Capacitor Android Starter)",
+  "description": "Tide & Tally Commercial Fishing Tycoon (Capacitor Android Starter)",
   "scripts": {
     "cap:sync": "npx cap sync android",
     "cap:open": "npx cap open android"

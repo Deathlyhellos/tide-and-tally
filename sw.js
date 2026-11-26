@@ -1,4 +1,4 @@
-const CACHE_NAME = 'harbor-haul-v1';
+const CACHE_NAME = 'tide-tally-v1';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (event) => {

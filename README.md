@@ -1,6 +1,8 @@
-# Harbor & Haul — Commercial Fishing Tycoon
+# Tide & Tally — Commercial Fishing Tycoon
 
-Play it live: https://deathlyhellos.github.io/harbor-and-haul/
+*Catch the tide. Count the haul.*
+
+Play it live: https://deathlyhellos.github.io/tide-and-tally/
 
 A mobile-first fishing tycoon game (v17). Deploy gear on fishing grounds, haul catch, manage fuel and ice, sell to seafood processors, complete contracts, upgrade your boat, hire deckhands, and send expeditions offshore.
 

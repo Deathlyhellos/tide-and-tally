@@ -1,6 +1,6 @@
 {
-  "appId": "com.harborandhaul.game",
-  "appName": "Harbor & Haul",
+  "appId": "com.tideandtally.game",
+  "appName": "Tide & Tally",
   "webDir": "www",
   "bundledWebRuntime": false
 }
