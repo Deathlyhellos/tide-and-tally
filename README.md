@@ -19,3 +19,11 @@ GitHub Pages serves this repo from the root: `index.html`, `manifest.json`, `sw.
 ## Build an Android app
 
 See `README_PLAY_STORE.md` — Capacitor + Android Studio, or PWABuilder from the live Pages URL.
+
+## Monetization (Play Billing + AdMob)
+
+See `WIRING-PLAY-BILLING-AND-ADMOB.md`. The shop is wired to RevenueCat
+(Starter Pack $1.99 one-time, Captain's Pass $4.99/mo) and AdMob rewarded
+ads, native only — the web version has no store. Code is wired; the native
+build and a real test purchase still need Android Studio + Play Console
+product setup.

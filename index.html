@@ -265,7 +265,7 @@
           <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
             <span>🛍️</span> Harbor Store
           </h2>
-          <span class="text-[11px] text-amber-700 font-semibold">Play Billing Ready</span>
+          <span id="billing-badge" class="text-[11px] text-amber-700 font-semibold">Web preview</span>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 flex items-center justify-between gap-3">
@@ -288,6 +288,8 @@
             </button>
           </div>
         </div>
+        <p id="store-note" class="text-[11px] text-slate-600 mt-3">Purchases and rewarded ads are only in the Google Play app — this web preview has no store.</p>
+        <button id="restore-btn" type="button" class="mt-2 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 text-xs font-bold text-slate-700 cursor-pointer">Restore purchases</button>
       </section>
 
       <section id="dev-timer-section" class="hidden bg-white/95 border border-slate-200 rounded-2xl p-4 shadow-md flex items-center justify-between gap-3">
@@ -367,12 +369,12 @@
     </div>
   </nav>
 
-  <!-- Simulated Rewarded Video Ad Modal -->
+  <!-- Rewarded ad loading indicator (the real AdMob ad shows full-screen) -->
   <div id="ad-modal" class="fixed inset-0 bg-slate-900/75 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
     <div class="bg-white border border-fuchsia-200 rounded-2xl p-5 max-w-sm w-full text-center shadow-2xl">
       <div class="text-3xl mb-2">🎬</div>
       <h3 class="text-lg font-bold text-slate-900 mb-1">Sponsor Message</h3>
-      <p id="ad-modal-desc" class="text-sm text-slate-600 mb-4">Reward unlocks in 3s...</p>
+      <p id="ad-modal-desc" class="text-sm text-slate-600 mb-4">Loading your rewarded ad…</p>
       <div class="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden">
         <div id="ad-progress-bar" class="h-full bg-fuchsia-500 transition-all duration-300" style="width: 0%"></div>
       </div>
@@ -404,6 +406,184 @@
     const CREW_WAGE_PER_SEASON = 60;
     const HAULS_PER_SEASON = 15;
     const MAX_DAILY_ADS = 4;
+
+    // ==========================================
+    // MONETIZATION — RevenueCat (purchases) + AdMob (rewarded ads)
+    // Native (Capacitor / Play) only. On the web there is no store:
+    // prices are hidden, ads are not shown, and nothing is granted free.
+    // Plugins are reached through window.Capacitor.Plugins — no bundler
+    // is needed for this single-file game. `npx cap sync` registers the
+    // native plugins after `npm install` (see WIRING-PLAY-BILLING-AND-ADMOB.md).
+    // TODO before release:
+    //  1. Paste the RevenueCat PUBLIC Google API key below.
+    //  2. Create starter_pack ($1.99, one-time) and captains_pass ($4.99/mo)
+    //     in Play Console, import them into RevenueCat, and attach them to
+    //     the default offering as packages, with entitlements
+    //     'starter_pack' and 'captains_pass'.
+    //  3. Replace the test AdMob rewarded unit below with the production
+    //     unit, set admobTestMode to false, and put the production AdMob
+    //     App ID in android/app/src/main/AndroidManifest.xml.
+    // NOT yet tested end-to-end: this machine has no Java / Android SDK,
+    // so the native build and a real test purchase still need Android
+    // Studio + internal testing (see the WIRING doc test plan).
+    // ==========================================
+    const MONETIZATION = {
+      revenueCatGoogleApiKey: 'REPLACE_WITH_REVENUECAT_GOOGLE_PUBLIC_KEY',
+      entitlementStarter: 'starter_pack',
+      entitlementPass: 'captains_pass',
+      productStarter: 'starter_pack',
+      productPass: 'captains_pass',
+      admobRewardedAdUnitId: 'ca-app-pub-3940256099942544/5224354917',
+      admobTestMode: true,
+    };
+    let monetizationReady = false;
+    let monetizationError = '';
+    let adRewardEarned = false;
+
+    function isNativeApp() {
+      try { return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); }
+      catch (e) { return false; }
+    }
+    function getPurchasesPlugin() {
+      try { return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Purchases) || null; }
+      catch (e) { return null; }
+    }
+    function getAdMobPlugin() {
+      try { return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AdMob) || null; }
+      catch (e) { return null; }
+    }
+    function storeNote(noteText) {
+      const el = document.getElementById('store-note');
+      if (el) el.textContent = noteText;
+      const badge = document.getElementById('billing-badge');
+      if (badge) badge.textContent = isNativeApp() ? (monetizationReady ? 'Play Billing' : 'Store unavailable') : 'Web preview';
+    }
+    function hasEntitlement(customerInfo, entitlementId) {
+      try { return !!(customerInfo && customerInfo.entitlements && customerInfo.entitlements.active && customerInfo.entitlements.active[entitlementId]); }
+      catch (e) { return false; }
+    }
+
+    async function initMonetization() {
+      if (!isNativeApp()) { storeNote('Purchases and rewarded ads are only in the Google Play app — this web preview has no store.'); return; }
+      const Purchases = getPurchasesPlugin();
+      const AdMob = getAdMobPlugin();
+      if (!Purchases || !AdMob) { monetizationError = 'Store plugins not found — run npx cap sync after npm install.'; storeNote(monetizationError); render(); return; }
+      if (!MONETIZATION.revenueCatGoogleApiKey || MONETIZATION.revenueCatGoogleApiKey.indexOf('REPLACE_WITH') === 0) {
+        monetizationError = 'Store not configured yet — RevenueCat key missing.'; storeNote(monetizationError); render(); return;
+      }
+      try {
+        await Purchases.configure({ apiKey: MONETIZATION.revenueCatGoogleApiKey });
+        await AdMob.initialize({ initializeForTesting: MONETIZATION.admobTestMode });
+        try { await AdMob.addListener('onRewardedVideoAdReward', () => { adRewardEarned = true; }); } catch (e) {}
+        monetizationReady = true;
+        await syncEntitlements();
+        storeNote("Purchases by Google Play. Captain's Pass renews monthly until cancelled in Play.");
+        render();
+      } catch (err) {
+        monetizationError = 'Store could not start — check connection and try again.';
+        storeNote(monetizationError); render();
+      }
+    }
+
+    async function syncEntitlements() {
+      const Purchases = getPurchasesPlugin();
+      if (!Purchases) return;
+      try {
+        const result = await Purchases.getCustomerInfo();
+        const customerInfo = (result && result.customerInfo) || result || null;
+        // Sync only — never grant pearls here, or a reinstall would pay out twice.
+        state.starterPackOwned = hasEntitlement(customerInfo, MONETIZATION.entitlementStarter);
+        state.captainsPass = hasEntitlement(customerInfo, MONETIZATION.entitlementPass);
+        saveGame(); render();
+      } catch (e) {}
+    }
+
+    function findPackage(offerings, productId) {
+      try {
+        const current = offerings && offerings.current;
+        const pkgs = (current && current.availablePackages) || [];
+        return pkgs.find((p) => p && p.product && p.product.identifier === productId) || null;
+      } catch (e) { return null; }
+    }
+
+    async function buyStarterPack() {
+      if (!isNativeApp()) { setStatus('Starter Pack is only in the Google Play app.'); return; }
+      if (state.starterPackOwned) return;
+      const Purchases = getPurchasesPlugin();
+      if (!Purchases || !monetizationReady) { setStatus(monetizationError || 'Store is not ready yet — try again in a moment.'); return; }
+      try {
+        const offerings = await Purchases.getOfferings();
+        const pkg = findPackage(offerings, MONETIZATION.productStarter);
+        if (!pkg) { setStatus('Starter Pack is not in the store yet.'); return; }
+        const result = await Purchases.purchasePackage({ aPackage: pkg });
+        const customerInfo = (result && result.customerInfo) || null;
+        await syncEntitlements();
+        if (state.starterPackOwned || hasEntitlement(customerInfo, MONETIZATION.entitlementStarter)) {
+          state.starterPackOwned = true;
+          state.pearls += 25;
+          buzz(20); playTone(659, 0.1, 'sine');
+          setStatus('🎁 Starter Pack bought: +25 💎 & +2 Hold Slots!');
+          saveGame(); render();
+        } else {
+          setStatus('Purchase could not be confirmed — use Restore purchases.');
+        }
+      } catch (err) {
+        if (err && (err.userCancelled || (err.code && String(err.code).indexOf('CANCEL') !== -1))) { setStatus('Purchase cancelled.'); return; }
+        setStatus('Purchase failed — no charge was made. Try again.');
+      }
+    }
+
+    async function manageCaptainsPass() {
+      if (!isNativeApp()) { setStatus("Captain's Pass is only in the Google Play app."); return; }
+      if (state.captainsPass) {
+        setStatus("Captain's Pass is active. To cancel, use Play Store > Payments & subscriptions > Subscriptions.");
+        return;
+      }
+      const Purchases = getPurchasesPlugin();
+      if (!Purchases || !monetizationReady) { setStatus(monetizationError || 'Store is not ready yet — try again in a moment.'); return; }
+      try {
+        const offerings = await Purchases.getOfferings();
+        const pkg = findPackage(offerings, MONETIZATION.productPass);
+        if (!pkg) { setStatus("Captain's Pass is not in the store yet."); return; }
+        const result = await Purchases.purchasePackage({ aPackage: pkg });
+        const customerInfo = (result && result.customerInfo) || null;
+        await syncEntitlements();
+        if (state.captainsPass || hasEntitlement(customerInfo, MONETIZATION.entitlementPass)) {
+          state.captainsPass = true;
+          buzz(); playTone(784, 0.14, 'sine');
+          setStatus("👑 Captain's Pass active! Renews monthly until cancelled in Play.");
+          saveGame(); render();
+        } else {
+          setStatus('Purchase could not be confirmed — use Restore purchases.');
+        }
+      } catch (err) {
+        if (err && (err.userCancelled || (err.code && String(err.code).indexOf('CANCEL') !== -1))) { setStatus('Purchase cancelled.'); return; }
+        setStatus('Purchase failed — no charge was made. Try again.');
+      }
+    }
+
+    async function restorePurchases() {
+      if (!isNativeApp()) { setStatus('Restore is only in the Google Play app.'); return; }
+      const Purchases = getPurchasesPlugin();
+      if (!Purchases || !monetizationReady) { setStatus(monetizationError || 'Store is not ready yet.'); return; }
+      try {
+        await Purchases.restorePurchases();
+        await syncEntitlements();
+        setStatus(state.starterPackOwned || state.captainsPass ? 'Purchases restored.' : 'No purchases found to restore.');
+      } catch (e) { setStatus('Restore failed — try again.'); }
+    }
+
+    function grantAdReward(rewardType) {
+      if (rewardType === 'refill') { state.fuel = getCurrentBoat().fuelCapacity; state.ice = ICE_MAX_CAPACITY; setStatus('🎬 Fuel & Ice refilled!'); }
+      else if (rewardType === 'speedup') {
+        const now = Date.now();
+        state.expeditions.forEach((exp) => { if (exp.status === 'at_sea') exp.endsAt = now + Math.round(Math.max(0, exp.endsAt - now) * 0.5); });
+        setStatus('🎬 Active fleet trip times cut by 50%!');
+      } else if (rewardType === 'pearls') { state.pearls += 1; setStatus('🎬 +1 Harbor Pearl 💎!'); }
+      state.adsWatchedToday = (state.adsWatchedToday || 0) + 1;
+      buzz(); playTone(784, 0.15, 'sine');
+      saveGame(); render();
+    }
 
     const SPECIES_SVG = {
       clam: `<svg viewBox="0 0 36 36" class="w-8 h-8 shrink-0" aria-hidden="true"><path d="M18 6C10 6 5 13 6 22c1 5 6 8 12 8s11-3 12-8c1-9-4-16-12-16z" fill="#fed7aa" stroke="#c2410c" stroke-width="2"/><path d="M18 6v24M12 8l4 21M24 8l-4 21" stroke="#ea580c" stroke-width="1.5" stroke-linecap="round"/></svg>`,
@@ -989,46 +1169,31 @@
       if (state.lastAdDay !== today) { state.lastAdDay = today; state.adsWatchedToday = 0; }
       return (state.adsWatchedToday || 0) < MAX_DAILY_ADS;
     }
-    function watchRewardedAd(rewardType) {
+    async function watchRewardedAd(rewardType) {
+      if (!isNativeApp()) { setStatus('Rewarded ads are only in the Google Play app.'); return; }
       if (adRunning) return;
       if (!checkDailyAdCap()) { setStatus(`Daily ad limit reached (${MAX_DAILY_ADS}/${MAX_DAILY_ADS}).`); playTone(180, 0.15, 'sawtooth', 0.05); return; }
+      const AdMob = getAdMobPlugin();
+      if (!AdMob || !monetizationReady) { setStatus(monetizationError || 'Ads are not ready yet — try again in a moment.'); return; }
       adRunning = true;
+      adRewardEarned = false;
       const modal = document.getElementById('ad-modal');
       const desc = document.getElementById('ad-modal-desc');
-      const bar = document.getElementById('ad-progress-bar');
-      modal.classList.remove('hidden'); modal.classList.add('flex'); bar.style.width = '0%';
-      let step = 0;
-      const timer = setInterval(() => {
-        step += 1; bar.style.width = `${step * 33.3}%`;
-        desc.textContent = `Reward unlocks in ${Math.max(0, 3 - step)}s...`;
-        if (step >= 3) {
-          clearInterval(timer); modal.classList.add('hidden'); modal.classList.remove('flex'); adRunning = false;
-          if (rewardType === 'refill') { state.fuel = getCurrentBoat().fuelCapacity; state.ice = ICE_MAX_CAPACITY; setStatus('🎬 Fuel & Ice refilled!'); }
-          else if (rewardType === 'speedup') {
-            const now = Date.now();
-            state.expeditions.forEach((exp) => { if (exp.status === 'at_sea') exp.endsAt = now + Math.round(Math.max(0, exp.endsAt - now) * 0.5); });
-            setStatus('🎬 Active fleet trip times cut by 50%!');
-          } else if (rewardType === 'pearls') { state.pearls += 1; setStatus('🎬 +1 Harbor Pearl 💎!'); }
-          state.adsWatchedToday = (state.adsWatchedToday || 0) + 1;
-          buzz(); playTone(784, 0.15, 'sine');
-          saveGame(); render();
-        }
-      }, 900);
-    }
-
-    function buyStarterPack() {
-      if (state.starterPackOwned) return;
-      state.starterPackOwned = true; state.pearls += 25;
-      buzz(20); playTone(659, 0.1, 'sine');
-      setStatus('🎁 Starter Pack claimed: +25 💎 & +2 Hold Slots!');
-      saveGame(); render();
-    }
-
-    function toggleCaptainsPass() {
-      state.captainsPass = !state.captainsPass;
-      buzz(); playTone(784, 0.14, 'sine');
-      setStatus(state.captainsPass ? "👑 Captain's Pass active!" : "Captain's Pass deactivated.");
-      saveGame(); render();
+      if (desc) desc.textContent = 'Loading your rewarded ad…';
+      if (modal) { modal.classList.remove('hidden'); modal.classList.add('flex'); }
+      try {
+        await AdMob.prepareRewardVideoAd({ adId: MONETIZATION.admobRewardedAdUnitId });
+        const shown = await AdMob.showRewardVideoAd();
+        if (shown) adRewardEarned = true;
+        if (modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
+        adRunning = false;
+        if (adRewardEarned) grantAdReward(rewardType);
+        else setStatus('No reward — the ad was not completed.');
+      } catch (err) {
+        if (modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
+        adRunning = false;
+        setStatus('No ad available right now — try again later.');
+      }
     }
 
     function confirmReset() {
@@ -1131,9 +1296,21 @@
       document.getElementById('nav-hold-dot').classList.toggle('hidden', getHoldCount() === 0);
 
       const passBtn = document.getElementById('iap-pass-btn');
-      if (passBtn) passBtn.textContent = state.captainsPass ? 'Active ✓' : '$4.99/mo';
+      if (passBtn) {
+        if (!isNativeApp()) { passBtn.textContent = 'Play app only'; passBtn.disabled = true; }
+        else if (state.captainsPass) { passBtn.textContent = 'Active ✓'; passBtn.disabled = false; }
+        else if (!monetizationReady) { passBtn.textContent = 'Store…'; passBtn.disabled = true; }
+        else { passBtn.textContent = '$4.99/mo'; passBtn.disabled = false; }
+      }
       const starterBtn = document.getElementById('iap-starter-btn');
-      if (starterBtn) { starterBtn.disabled = !!state.starterPackOwned; starterBtn.textContent = state.starterPackOwned ? 'Owned ✓' : '$1.99'; }
+      if (starterBtn) {
+        if (state.starterPackOwned) { starterBtn.disabled = true; starterBtn.textContent = 'Owned ✓'; }
+        else if (!isNativeApp()) { starterBtn.disabled = true; starterBtn.textContent = 'Play app only'; }
+        else if (!monetizationReady) { starterBtn.disabled = true; starterBtn.textContent = 'Store…'; }
+        else { starterBtn.disabled = false; starterBtn.textContent = '$1.99'; }
+      }
+      const adButtons = ['ad-refill-btn', 'ad-speedup-btn', 'ad-pearls-btn'].map((id) => document.getElementById(id)).filter(Boolean);
+      adButtons.forEach((btn) => { btn.disabled = !isNativeApp(); });
       const seasonBadge = document.getElementById('season-progress-badge');
       if (seasonBadge) seasonBadge.textContent = `${state.seasonHauls || 0}/${HAULS_PER_SEASON} Hauls`;
       const nextSeasonBtn = document.getElementById('next-season-btn');
@@ -1143,7 +1320,9 @@
       const idleBtn = document.getElementById('idle-mode-btn');
       if (idleBtn) idleBtn.textContent = state.idleMode ? 'Idle (15m–6h)' : 'Demo (25s–75s)';
       const adCapNote = document.getElementById('ad-cap-note');
-      if (adCapNote) adCapNote.textContent = `Daily rewarded ads remaining: ${Math.max(0, MAX_DAILY_ADS - (state.adsWatchedToday || 0))} / ${MAX_DAILY_ADS}`;
+      if (adCapNote) adCapNote.textContent = isNativeApp()
+        ? `Daily rewarded ads remaining: ${Math.max(0, MAX_DAILY_ADS - (state.adsWatchedToday || 0))} / ${MAX_DAILY_ADS}`
+        : 'Rewarded ads are only in the Google Play app.';
 
       const tutBanner = document.getElementById('tutorial-banner');
       const tutText = document.getElementById('tutorial-text');
@@ -1582,7 +1761,9 @@
       document.getElementById('ad-speedup-btn').addEventListener('click', () => watchRewardedAd('speedup'));
       document.getElementById('ad-pearls-btn').addEventListener('click', () => watchRewardedAd('pearls'));
       document.getElementById('iap-starter-btn').addEventListener('click', buyStarterPack);
-      document.getElementById('iap-pass-btn').addEventListener('click', toggleCaptainsPass);
+      document.getElementById('iap-pass-btn').addEventListener('click', manageCaptainsPass);
+      document.getElementById('restore-btn').addEventListener('click', restorePurchases);
+      initMonetization();
       document.getElementById('idle-mode-btn').addEventListener('click', () => { state.idleMode = !state.idleMode; saveGame(); render(); });
       document.getElementById('tutorial-skip-btn').addEventListener('click', () => { state.tutorialStep = 3; saveGame(); renderHeader(); });
 
