@@ -103,24 +103,67 @@ Notes:
 - Never tap your own production ads, and never use production ad units
   while testing — that can get the AdMob account suspended.
 
-## 5. Native build — needs Android Studio (not done here)
+## 5. Native build — GitHub Actions (no Android Studio needed)
 
-This machine has Node 24 / npm 10 but **no Java and no Android SDK**, so
-`npx cap add android` / `npx cap sync` / an AAB build cannot run here.
+`.github/workflows/android-release.yml` builds the app in the cloud.
+Run it manually: repo > Actions > "Android release build" > Run workflow.
+It produces two artifacts: a debug APK (install on a phone to test) and a
+release AAB (upload to Play Console).
 
-On a machine with Android Studio:
+What the workflow does on every run: check out the repo, set up Node 22
+and Java 21, stage the web files into `www/`, `npm ci`, `npx cap add
+android` + `npx cap sync android` (this scaffolds the native project and
+registers the AdMob + RevenueCat plugins), set `versionName` to 1.0.0,
+inject the AdMob App ID into `AndroidManifest.xml`, then run Gradle
+(`assembleDebug` + `bundleRelease`). The `android/` folder is **not**
+committed to the repo — the workflow regenerates it each run.
+
+Verified 2026-11-26 by simulating every step locally up to the Gradle
+compile: `npm ci` works from the committed `package-lock.json`, `cap add`
++ `cap sync` find both plugins, the version bump applies, and the AdMob
+App ID lands in the manifest. The Gradle compile itself is the one step
+not yet run anywhere — it needs the Android SDK, which the GitHub runner
+has preinstalled. The first workflow run is the real test of that step;
+if Gradle fails, its log will say which dependency or SDK piece is missing.
+
+### Signing the release AAB (one-time setup, still manual)
+
+The workflow signs the AAB only when these four repository secrets exist
+(Settings > Secrets and variables > Actions). Without them it builds an
+unsigned AAB and says so in the run summary — Play Console will reject
+an unsigned AAB.
+
+- `ANDROID_KEYSTORE_BASE64` — base64 of the upload keystore file
+- `ANDROID_KEY_ALIAS` — key alias inside the keystore
+- `ANDROID_KEYSTORE_PASSWORD` — keystore password
+- `ANDROID_KEY_PASSWORD` — key password (often the same)
+
+Create the keystore once, on any computer with Java (JDK 21) installed:
 
 ```bash
-cd tide-and-tally   # the repo checkout
-npm install
-npx cap add android
-npx cap sync android
-npx cap open android
+keytool -genkeypair -v -keystore tide-and-tally-upload.jks \
+  -alias tide-and-tally -keyalg RSA -keysize 2048 -validity 10000
+base64 -w0 tide-and-tally-upload.jks   # paste the output as ANDROID_KEYSTORE_BASE64
 ```
 
-Then in Android Studio: check the AdMob App ID is in the manifest, build
-a signed **AAB** (not APK) for `com.tideandtally.game`, and upload it to
-Play Console > Internal testing.
+Keep the `.jks` file and its passwords somewhere safe — you need the same
+upload key for every future release. If it is lost, Google Play support can
+reset the upload key for an app using Play App Signing, but that is a
+support request, not something to rely on.
+
+AdMob App ID: set the repository **variable** `ADMOB_APP_ID` to the
+production App ID before a real release. Without it the workflow uses
+Google's test App ID (`ca-app-pub-3940256099942544~3347511713`), which is
+for testing only and must never ship.
+
+### Alternative: Android Studio
+
+If you would rather build on your own computer, Android Studio does the
+same Gradle build locally: `npm install`, `npx cap add android`,
+`npx cap sync android`, open `android/` in Android Studio, build a signed
+AAB. Same result, more setup on your machine. Replit alone cannot do this
+step — it has no Android SDK, Gradle, or signing (verified Nov 26, 2026);
+Capgo Build from Replit is a paid alternative ($14/mo after trial).
 
 ## 6. Test plan (before closed testing / production)
 

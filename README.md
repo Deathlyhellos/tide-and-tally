@@ -20,6 +20,10 @@ GitHub Pages serves this repo from the root: `index.html`, `manifest.json`, `sw.
 
 See `README_PLAY_STORE.md` — Capacitor + Android Studio, or PWABuilder from the live Pages URL.
 
+GitHub Actions builds it in the cloud instead: `.github/workflows/android-release.yml`
+— run it from the repo's Actions tab. It produces a debug APK and a release AAB.
+Signing needs the four `ANDROID_*` secrets (see `WIRING-PLAY-BILLING-AND-ADMOB.md` §5).
+
 ## Monetization (Play Billing + AdMob)
 
 See `WIRING-PLAY-BILLING-AND-ADMOB.md`. The shop is wired to RevenueCat
